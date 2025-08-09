@@ -14,6 +14,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
+import logging
 
 
 def _slugify(text: str, max_length: int = 60) -> str:
@@ -70,32 +71,35 @@ def save_generation_outputs(
     generation_dir = root / f"{slug}_{timestamp}_{suffix}"
     generation_dir.mkdir(parents=True, exist_ok=True)
 
-    # Write plain-text artifacts
-    (generation_dir / "original_prompt.txt").write_text(original_prompt, encoding="utf-8")
-    if getattr(full_state, "enhanced_concept", None):
-        (generation_dir / "enhanced_concept.txt").write_text(
-            full_state.enhanced_concept, encoding="utf-8"
-        )
-    if getattr(full_state, "negative_prompt", None):
-        (generation_dir / "negative_prompt.txt").write_text(
-            full_state.negative_prompt, encoding="utf-8"
-        )
+    # Write artifacts with robust error handling
+    try:
+        (generation_dir / "original_prompt.txt").write_text(original_prompt, encoding="utf-8")
+        if getattr(full_state, "enhanced_concept", None):
+            (generation_dir / "enhanced_concept.txt").write_text(
+                full_state.enhanced_concept, encoding="utf-8"
+            )
+        if getattr(full_state, "negative_prompt", None):
+            (generation_dir / "negative_prompt.txt").write_text(
+                full_state.negative_prompt, encoding="utf-8"
+            )
 
-    # JSON format
-    if output.get("json_prompt") is not None:
-        (generation_dir / "json_prompt.json").write_text(
-            json.dumps(output["json_prompt"], indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        # JSON format
+        if output.get("json_prompt") is not None:
+            (generation_dir / "json_prompt.json").write_text(
+                json.dumps(output["json_prompt"], indent=2, ensure_ascii=False), encoding="utf-8"
+            )
 
-    # XML format
-    if output.get("xml_prompt") is not None:
-        (generation_dir / "xml_prompt.xml").write_text(output["xml_prompt"], encoding="utf-8")
+        # XML format
+        if output.get("xml_prompt") is not None:
+            (generation_dir / "xml_prompt.xml").write_text(output["xml_prompt"], encoding="utf-8")
 
-    # Natural language format
-    if output.get("natural_language_prompt") is not None:
-        (generation_dir / "natural_language_prompt.txt").write_text(
-            output["natural_language_prompt"], encoding="utf-8"
-        )
+        # Natural language format
+        if output.get("natural_language_prompt") is not None:
+            (generation_dir / "natural_language_prompt.txt").write_text(
+                output["natural_language_prompt"], encoding="utf-8"
+            )
+    except (OSError, IOError) as io_err:
+        logging.exception("Failed to write one or more artifacts: %s", io_err, exc_info=True)
 
     # Metadata and process notes
     meta: Dict[str, Any] = {
@@ -107,8 +111,8 @@ def save_generation_outputs(
     try:
         if config is not None:
             meta["config"] = config.model_dump()
-    except Exception:
-        pass
+    except Exception as err:
+        logging.exception("Failed to serialize config: %s", err, exc_info=True)
 
     (generation_dir / "meta.json").write_text(
         json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"

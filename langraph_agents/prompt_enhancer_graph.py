@@ -238,8 +238,8 @@ class PromptEnhancerWorkflow:
                 )
                 minimal_output["saved_dir"] = saved_dir
                 logger.info(f"Saved failure artifacts to: {saved_dir}")
-            except Exception:
-                pass
+            except Exception as save_err:
+                logger.exception("Failed to save failure artifacts: %s", save_err, exc_info=True)
 
             raise RuntimeError(f"Failed to enhance prompt: {str(e)}") from e
     

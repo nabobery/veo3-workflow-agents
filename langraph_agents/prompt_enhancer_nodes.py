@@ -5,7 +5,7 @@ This module implements the core processing nodes for the video prompt enhancer a
 Each node performs a specific enhancement task using Google Gemini models.
 """
 
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as SafeET
 from typing import Dict, Any, Optional
 import time
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -13,6 +13,8 @@ from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 import logging
+from functools import lru_cache
+from xml.sax.saxutils import escape as xml_escape
 
 from prompt_enhancer_state import VideoPromptState, ConfigSettings
 from prompts import (
@@ -52,19 +54,25 @@ class JSONPromptOutput(BaseModel):
 
 
 def initialize_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
-    """Initialize the Google Gemini LLM with optimal settings.
+    """Initialize the Google Gemini LLM with optimal settings with error handling."""
+    try:
+        settings = get_settings()
+        return ChatGoogleGenerativeAI(
+            google_api_key=settings.GOOGLE_API_KEY,
+            model=settings.GOOGLE_MODEL,
+            temperature=temperature,
+            max_tokens=2048,
+            top_p=0.9,
+        )
+    except Exception as err:
+        logger.exception("Failed to initialize LLM", exc_info=True)
+        raise RuntimeError(f"LLM initialization error: {err}") from err
 
-    Note: We fetch settings lazily at call time to avoid requiring
-    environment configuration during import.
-    """
-    settings = get_settings()
-    return ChatGoogleGenerativeAI(
-        google_api_key=settings.GOOGLE_API_KEY,
-        model=settings.GOOGLE_MODEL,
-        temperature=temperature,
-        max_tokens=2048,
-        top_p=0.9,
-    )
+
+@lru_cache(maxsize=4)
+def _get_cached_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
+    """Return a cached LLM instance to avoid repeated initialization cost."""
+    return initialize_llm(temperature=temperature)
 
 
 def generate_concept(state: VideoPromptState) -> dict:
@@ -82,7 +90,7 @@ def generate_concept(state: VideoPromptState) -> dict:
     """
     logger.info("Starting concept generation...")
     
-    llm = initialize_llm()
+    llm = _get_cached_llm()
     parser = PydanticOutputParser(pydantic_object=EnhancedConcept)
     
     system_prompt = CONCEPT_SYSTEM_PROMPT
@@ -128,7 +136,7 @@ def generate_concept(state: VideoPromptState) -> dict:
             ("system", strict_system),
             ("human", human_prompt + "\nRespond ONLY as JSON."),
         ])
-        retry_llm = initialize_llm(temperature=0.2)
+        retry_llm = _get_cached_llm(temperature=0.2)
         retry_chain = strict_template | retry_llm | parser
         result = retry_chain.invoke({
             "original_prompt": state.original_prompt,
@@ -172,7 +180,7 @@ def enhance_with_details(state: VideoPromptState) -> dict:
     """
     logger.info("Starting detail enhancement...")
     
-    llm = initialize_llm()
+    llm = _get_cached_llm()
     
     system_prompt = DETAILS_SYSTEM_PROMPT
     human_prompt = DETAILS_HUMAN_PROMPT
@@ -222,7 +230,7 @@ def generate_json_format(state: VideoPromptState) -> dict:
     """
     logger.info("Generating JSON format...")
     
-    llm = initialize_llm()
+    llm = _get_cached_llm()
     parser = PydanticOutputParser(pydantic_object=JSONPromptOutput)
     
     system_prompt = JSON_SYSTEM_PROMPT
@@ -308,7 +316,7 @@ def generate_xml_format(state: VideoPromptState) -> dict:
     """
     logger.info("Generating XML format...")
     
-    llm = initialize_llm()
+    llm = _get_cached_llm()
     
     system_prompt = XML_SYSTEM_PROMPT
     human_prompt = XML_HUMAN_PROMPT
@@ -328,9 +336,9 @@ def generate_xml_format(state: VideoPromptState) -> dict:
 
         # Validate XML format
         try:
-            ET.fromstring(xml_output)
+            SafeET.fromstring(xml_output)
             final_xml = xml_output
-        except ET.ParseError:
+        except Exception:
             # Try to fix common XML issues
             final_xml = _clean_xml_output(xml_output)
 
@@ -490,15 +498,17 @@ def _create_fallback_json(state: VideoPromptState) -> Dict[str, Any]:
 
 
 def _create_fallback_xml(state: VideoPromptState) -> str:
-    """Create a fallback XML structure"""
+    """Create a fallback XML structure with escaped content"""
+    desc = xml_escape(state.enhanced_concept or state.original_prompt)
+    neg = xml_escape(state.negative_prompt or "blurry, low quality, distorted")
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <prompt>
     <description>
-        {state.enhanced_concept or state.original_prompt}
+        {desc}
     </description>
     
     <negative>
-        {state.negative_prompt or "blurry, low quality, distorted"}
+        {neg}
     </negative>
     
     <camera movement="static" angle="medium_shot" lens="50mm">

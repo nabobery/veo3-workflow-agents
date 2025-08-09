@@ -17,6 +17,20 @@ from config import get_settings
 from example_usage import run_all_examples
 
 
+def _clear_screen() -> None:
+    """Clear terminal screen without invoking a shell.
+
+    Uses ANSI escape sequences which are safe and fast on POSIX and modern
+    Windows terminals. Falls back to printing newlines if ANSI isn't supported.
+    """
+    try:
+        # Clear screen and move cursor to home position
+        print("\033[2J\033[H", end="")
+    except Exception:
+        # Minimal fallback; no shell invocation
+        print("\n" * 100, end="")
+
+
 def check_environment() -> bool:
     try:
         get_settings()
@@ -113,7 +127,7 @@ def interactive_mode() -> None:
                 show_example_prompts()
                 continue
             if user_input.lower() == "clear":
-                os.system("cls" if os.name == "nt" else "clear")
+                _clear_screen()
                 continue
 
             print(f"\n🔄 Enhancing: {user_input}")
