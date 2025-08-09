@@ -1,57 +1,82 @@
 # Video Prompt Enhancer Agent 🎬
 
-A sophisticated LangGraph-based agent that transforms basic video prompts into three enhanced formats using Google Gemini models. Perfect for creating professional-quality AI video generation prompts.
+A LangGraph-based agent that transforms basic video prompts into three enhanced formats using Google Gemini models. Ideal for producing professional-quality AI video generation prompts.
 
 ## Features ✨
 
 - **Three Output Formats**: JSON, XML, and Natural Language
 - **Professional Enhancement**: Adds technical details, camera settings, and cinematic elements
-- **Google Gemini Integration**: Uses latest Gemini 2.0 Flash model for intelligent enhancement
-- **Structured State Management**: Built with Pydantic for type safety and validation
-- **Parallel Processing**: Efficient workflow with parallel format generation
+- **Google Gemini Integration**: Default model `gemini-2.5-flash`
+- **Structured State Management**: Pydantic models for type safety
+- **Parallel Processing**: JSON, XML, and Natural Language are generated in parallel
 - **Fallback Handling**: Robust error handling with graceful degradation
 
 ## Quick Start 🚀
 
-### 1. Installation
+### 1) Install
+
+From the repository root:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Using pip
+pip install -e .
 
-# Or install manually
-pip install langgraph langchain-google-genai langchain-core pydantic typing-extensions
+# Or with uv
+uv pip install -e .
 ```
 
-### 2. Environment Setup
+### 2) Configure environment
+
+Get an API key from [Google AI Studio](https://ai.google.dev/tutorials/setup) and set it:
 
 ```bash
-# Set your Google API key
-export GOOGLE_API_KEY="your-google-api-key-here"
+# macOS/Linux (bash/zsh)
+export GOOGLE_API_KEY="your-google-api-key"
+
+# Windows (PowerShell)
+$env:GOOGLE_API_KEY = "your-google-api-key"
 ```
 
-Get your API key from [Google AI Studio](https://ai.google.dev/tutorials/setup).
+Optional overrides:
 
-### 3. Basic Usage
+- `GOOGLE_MODEL` (default: `gemini-2.5-flash`)
+- `DEFAULT_TEMPERATURE` (default: `0.7`)
+
+### 3) Run the CLI
+
+Current version is best invoked from inside the package folder:
+
+```bash
+cd langraph_agents
+python cli.py --prompt "A cat sitting on a windowsill" --format all
+
+# Interactive mode
+python cli.py --interactive
+
+# Examples
+python cli.py --examples
+```
+
+Artifacts are saved under `prompt_outputs/<slug>_<timestamp>_<hash>`.
+
+### 4) Use from Python
 
 ```python
 from langraph_agents import enhance_video_prompt
 
 result = enhance_video_prompt("A cat sitting on a windowsill")
-print("JSON Format:", result["json_prompt"])
-print("XML Format:", result["xml_prompt"])
-print("Natural Language:", result["natural_language_prompt"])
+print("Saved to:", result.get("saved_dir"))
 ```
 
 ## Output Examples 📋
 
 ### Input Prompt
 
-```
+```bash
 "A magical transformation scene where furniture appears in an empty room"
 ```
 
-### JSON Output
+### JSON Output (shape)
 
 ```json
 {
@@ -74,36 +99,22 @@ print("Natural Language:", result["natural_language_prompt"])
 }
 ```
 
-### XML Output
+### XML Output (actual generator structure)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <prompt>
-    <description>
-        A pristine white living room transforms as furniture magically materializes from an exploding cardboard box, creating a fully furnished space in seconds.
-    </description>
-
-    <negative>
-        blurry, low resolution, distorted furniture, poor lighting, incomplete transformation
-    </negative>
-
-    <camera movement="slight_zoom_in" angle="wide_establishing" lens="35mm">
-        Static wide shot that slowly moves closer to capture the dramatic transformation
-    </camera>
-
-    <lighting mood="bright_commercial" time="day" quality="studio">
-        Clean, bright lighting with soft shadows emphasizing the modern aesthetic
-    </lighting>
-
-    <style aesthetic="commercial" rendering="photorealistic">
-        Clean, modern commercial aesthetic with high-quality rendering
-    </style>
+  <description>A richly described enhanced concept...</description>
+  <negative>blurry, low quality, distorted</negative>
+  <camera movement="..." angle="..." lens="...">Standard camera setup with natural framing</camera>
+  <style aesthetic="..." rendering="...">Clean, professional visual style with natural lighting</style>
+  
 </prompt>
 ```
 
 ### Natural Language Output
 
-```
+```bash
 The scene opens in a pristine, sterile white living room with polished hardwood floors reflecting soft, diffused natural light streaming through large floor-to-ceiling windows. The space is completely empty except for a single, modest brown cardboard box positioned precisely in the center of the room. The camera begins with a wide establishing shot at eye level, slowly pushing in with a gentle movement, creating anticipation.
 
 At the 2-second mark, the cardboard box begins to vibrate slightly, its corners lifting as if pressurized from within. The lighting shifts to a warmer, golden tone as the box suddenly erupts in a spectacular burst of motion - not violent, but magical and choreographed. Furniture pieces emerge in perfect synchronization: a sleek modern sofa materializes horizontally, a coffee table slides smoothly into place, and bookshelves unfold vertically against the walls.
@@ -156,109 +167,41 @@ custom_config = ConfigSettings(
 
 ## Architecture 🏗️
 
-The agent follows a structured workflow:
-
-```
+```bash
 START
   ↓
-generate_concept (Enhance basic prompt)
+generate_concept (LLM)
   ↓
-enhance_details (Add technical specifications)
+enhance_details (LLM)
   ↓
-┌─────────────┬─────────────┬─────────────┐
-│ JSON Format │ XML Format  │ Natural Lang│
-└─────────────┴─────────────┴─────────────┘
+┌─────────────────┬────────────────┬─────────────────────────┐
+│ generate_json   │ generate_xml   │ generate_natural_language │
+└─────────────────┴────────────────┴─────────────────────────┘
   ↓
-finalize (Validate and complete)
+finalize
   ↓
 END
 ```
 
 ### Key Components
 
-- **State Management**: Pydantic-based state schema for type safety
-- **Node Functions**: Specialized LLM-powered enhancement nodes
-- **Graph Workflow**: LangGraph manages execution flow
-- **Error Handling**: Graceful fallbacks for robust operation
-
-## Best Practices 💡
-
-### Prompt Engineering Tips
-
-1. **Be Specific**: Include key visual elements you want enhanced
-2. **Set Context**: Mention the mood, setting, or style preferences
-3. **Technical Hints**: Include camera movement or lighting preferences
-4. **Temporal Elements**: Describe what happens over time
-
-### Good Input Examples
-
-```python
-# ✅ Good: Specific with visual details
-"A time-lapse of cherry blossoms blooming in a Japanese garden at sunrise"
-
-# ✅ Good: Includes mood and technical elements
-"Cinematic slow-motion shot of raindrops on glass with dramatic backlighting"
-
-# ❌ Too vague
-"Something cool"
-
-# ❌ Too complex for single prompt
-"A 10-minute documentary about climate change with multiple scenes and characters"
-```
+- **State**: `prompt_enhancer_state.py`
+- **Nodes**: `prompt_enhancer_nodes.py`
+- **Graph**: `prompt_enhancer_graph.py`
+- **CLI**: `cli.py`
+- **Storage**: `storage.py` (writes artifacts to `prompt_outputs/`)
 
 ## Configuration ⚙️
 
-### Environment Variables
+- Required: `GOOGLE_API_KEY`
+- Optional: `GOOGLE_MODEL` (default `gemini-2.5-flash`), `DEFAULT_TEMPERATURE` (default `0.7`)
+- `.env` is supported via pydantic-settings
 
-```bash
-export GOOGLE_API_KEY="your-google-api-key"
+## Troubleshooting 🔧
 
-# Optional - for debugging
-export LANGCHAIN_TRACING_V2="true"
-export LANGCHAIN_API_KEY="your-langsmith-key"
-```
-
-### Model Settings
-
-The agent uses `gemini-2.0-flash` with optimized settings:
-
-- **Temperature**: 0.7 (balanced creativity/consistency)
-- **Max Tokens**: 2048 (sufficient for detailed outputs)
-- **Top P**: 0.9 (diverse but focused responses)
-
-## Error Handling 🛡️
-
-The agent includes comprehensive error handling:
-
-- **Validation Errors**: Graceful fallbacks for invalid responses
-- **API Failures**: Retry logic and fallback content
-- **Format Errors**: Automatic format cleaning and validation
-- **Environment Issues**: Clear error messages for setup problems
-
-## Contributing 🤝
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes** with proper tests
-4. **Follow the coding standards** (Black, isort, type hints)
-5. **Submit a pull request**
-
-### Development Setup
-
-```bash
-# Install development dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest tests/
-
-# Format code
-black langraph_agents/
-isort langraph_agents/
-
-# Type checking
-mypy langraph_agents/
-```
+- **API key missing**: Set `GOOGLE_API_KEY` as shown above
+- **Import errors when using CLI**: Run from inside `langraph_agents/` for now
+- **Empty outputs**: Check network/API key; fallbacks will still persist minimal artifacts
 
 ## Roadmap 🗺️
 
@@ -275,7 +218,7 @@ mypy langraph_agents/
 
 **1. API Key Error**
 
-```
+```bash
 Error: Environment not properly configured
 ```
 
@@ -283,7 +226,7 @@ Error: Environment not properly configured
 
 **2. Import Error**
 
-```
+```bash
 ModuleNotFoundError: No module named 'langraph_agents'
 ```
 
@@ -291,7 +234,7 @@ ModuleNotFoundError: No module named 'langraph_agents'
 
 **3. Empty Responses**
 
-```
+```bash
 Warning: Missing outputs: ['json', 'xml']
 ```
 
@@ -310,4 +253,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Created with ❤️ for the AI video generation community**
+— Created with ❤️ for the AI video generation community
