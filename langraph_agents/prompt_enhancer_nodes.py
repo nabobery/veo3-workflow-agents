@@ -6,6 +6,7 @@ Each node performs a specific enhancement task using Google Gemini models.
 """
 
 from defusedxml import ElementTree as SafeET
+import xml.etree.ElementTree as XET
 from typing import Dict, Any, Optional
 import time
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -306,53 +307,50 @@ def generate_json_format(state: VideoPromptState) -> dict:
 
 def generate_xml_format(state: VideoPromptState) -> dict:
     """
-    Generate XML-formatted prompt output.
-    
-    Args:
-        state: Current VideoPromptState
-        
-    Returns:
-        Updated VideoPromptState with xml_prompt populated
+    Generate XML-formatted prompt output deterministically from the current state.
+
+    This avoids relying on LLM output for XML, ensuring well-formed documents.
     """
     logger.info("Generating XML format...")
-    
-    llm = _get_cached_llm()
-    
-    system_prompt = XML_SYSTEM_PROMPT
-    human_prompt = XML_HUMAN_PROMPT
-    
-    prompt_template = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", human_prompt)
-    ])
-    
+
     try:
-        chain = prompt_template | llm | StrOutputParser()
+        config = state.config or ConfigSettings()
 
-        xml_output = chain.invoke({
-            "enhanced_concept": state.enhanced_concept,
-            "negative_prompt": state.negative_prompt
-        })
+        root = XET.Element("prompt")
 
-        # Validate XML format
-        try:
-            SafeET.fromstring(xml_output)
-            final_xml = xml_output
-        except Exception:
-            # Try to fix common XML issues
-            final_xml = _clean_xml_output(xml_output)
+        description_el = XET.SubElement(root, "description")
+        description_el.text = (state.enhanced_concept or state.original_prompt or "").strip()
+
+        negative_el = XET.SubElement(root, "negative")
+        negative_el.text = (state.negative_prompt or "blurry, low quality, distorted").strip()
+
+        camera_attrs = {
+            "movement": config.camera.movement,
+            "angle": config.camera.angle,
+            "lens": config.camera.lens,
+        }
+        camera_el = XET.SubElement(root, "camera", camera_attrs)
+        camera_el.text = "Standard camera setup with natural framing"
+
+        style_attrs = {
+            "aesthetic": config.style.aesthetic,
+            "rendering": config.style.rendering,
+        }
+        style_el = XET.SubElement(root, "style", style_attrs)
+        style_el.text = "Clean, professional visual style with natural lighting"
+
+        xml_body = XET.tostring(root, encoding="unicode")
+        final_xml = f"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n{xml_body}"
+
+        # Validate with defusedxml to ensure well-formedness
+        SafeET.fromstring(final_xml)
 
         logger.info("XML generation completed successfully")
-        return {
-            "xml_prompt": final_xml,
-        }
+        return {"xml_prompt": final_xml}
 
     except Exception:
         logger.error("Error in XML generation", exc_info=True)
-        # Fallback XML creation
-        return {
-            "xml_prompt": _create_fallback_xml(state),
-        }
+        return {"xml_prompt": _create_fallback_xml(state)}
 
 
 def generate_natural_language_format(state: VideoPromptState) -> dict:
