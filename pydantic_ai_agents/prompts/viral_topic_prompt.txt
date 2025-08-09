@@ -1,0 +1,5 @@
+Identify currently trending or viral topics (global or niche as appropriate).
+Use web search tools to gather signals (recency, news coverage, social mentions).
+Produce exactly {n} video prompt ideas, each with: title, description, sources (URL strings), trend_score (0-1).
+Prefer ideas with clear visual storytelling potential and broad appeal.
+Return only a JSON object with this shape: {"ideas": [ ... ]}.

@@ -1,0 +1,7 @@
+Search the web for the given topic and generate exactly {n} concise, creative video prompt ideas.
+For each idea, output an object with fields:
+- title (short)
+- description (2-4 sentences)
+- sources (array of URL strings)
+Avoid duplication, cover diverse angles, and ensure ideas are feasible for AI video generation.
+Return only a JSON object with this shape: {"ideas": [ ... ]}.
