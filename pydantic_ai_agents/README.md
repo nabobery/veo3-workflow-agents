@@ -8,7 +8,7 @@ A lightweight set of Pydantic AI agents that generate seed video prompt ideas in
   - **simple**: Web search + LLM creativity → diverse ideas
   - **viral**: Selects trending topics and researches with web tools → viral-leaning ideas with `trend_score`
   - **variations**: Given a user topic → distinct variations/prompts
-- **Gemini-first**: Uses `google:gemini-2.5-flash` by default; `google:gemini-2.5-pro` supported
+- **Gemini-only**: Uses Google's Gemini via `GoogleProvider` (GLA or Vertex). Default `gemini-2.5-flash`.
 - **Web Tools**: Built-in DuckDuckGo; optional Tavily via `TAVILY_API_KEY`
 - **Structured Output**: Returns a validated `IdeaList` schema
 
@@ -30,11 +30,17 @@ Set your Google API key and choose the Gemini model:
 ```bash
 # macOS/Linux (bash/zsh)
 export GOOGLE_API_KEY="your-google-api-key"
-export PYA_MODEL="google:gemini-2.5-flash"  # or google:gemini-2.5-pro
+export PYA_MODEL="gemini-2.5-flash"  # or gemini-2.5-pro
 
 # Windows (PowerShell)
 $env:GOOGLE_API_KEY = "your-google-api-key"
-$env:PYA_MODEL = "google:gemini-2.5-flash"  # or google:gemini-2.5-pro
+$env:PYA_MODEL = "gemini-2.5-flash"  # or gemini-2.5-pro
+
+# To use Vertex AI instead of the Generative Language API (optional):
+export GOOGLE_VERTEX=true
+# optionally set project/location (or rely on GOOGLE_CLOUD_PROJECT/GOOGLE_CLOUD_LOCATION)
+export GOOGLE_PROJECT="your-gcp-project"
+export GOOGLE_LOCATION="us-central1"
 ```
 
 Optional search provider key:
@@ -113,13 +119,13 @@ for idea in ideas.ideas:
 
 ## Troubleshooting 🔧
 
-- Ensure `GOOGLE_API_KEY` is set and valid (Gemini models).
+- Ensure `GOOGLE_API_KEY` is set and valid (GLA) or Vertex credentials are configured.
 - Without Tavily, DuckDuckGo will still provide search signals.
 - Outputs must be valid JSON; agents enforce the `{ "ideas": [...] }` shape.
 
 ## Reference 📚
 
-- Model selector: `PYA_MODEL` (default `google:gemini-2.5-flash`, or `google:gemini-2.5-pro`)
+- Model selector: `PYA_MODEL` (default `gemini-2.5-flash`, or `gemini-2.5-pro`)
 - Optional keys: `TAVILY_API_KEY`
 
 ## License 📄

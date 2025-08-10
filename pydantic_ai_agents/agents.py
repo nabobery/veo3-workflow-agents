@@ -5,6 +5,8 @@ from typing import List, Optional
 import json
 import contextlib
 from pydantic_ai import Agent
+from pydantic_ai.models.google import GoogleModel
+from pydantic_ai.providers.google import GoogleProvider
 
 from .config import get_settings
 from .tools import build_default_search_tools
@@ -19,11 +21,13 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
     if extra_tools:
         tools.extend(extra_tools)
 
-    agent = Agent(
-        settings.PYA_MODEL,
-        tools=tools,
-        system_prompt=system_prompt,
-    )
+    # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
+    api_key = settings.GOOGLE_API_KEY.get_secret_value()
+    provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
+
+    model = GoogleModel(settings.PYA_MODEL, provider=provider)
+
+    agent = Agent(model=model, tools=tools, system_prompt=system_prompt)
     return agent
 
 
