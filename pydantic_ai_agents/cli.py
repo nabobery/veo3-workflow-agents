@@ -10,6 +10,7 @@ from .agents import (
     generate_variations_for_topic,
 )
 from .config import get_settings
+from .storage import save_ideas_to_contents
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -66,7 +67,9 @@ def main(argv: list[str] | None = None) -> int:
             parser.print_help()
             return 2
 
-        print(json.dumps(result.model_dump(), indent=2))
+        # Persist JSON to the `contents` directory and print the saved path
+        saved_path = save_ideas_to_contents(mode or "unknown", topic, result)
+        print(saved_path)
         return 0
 
     except KeyboardInterrupt:

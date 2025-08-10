@@ -83,3 +83,28 @@ def save_ideas_output(
     return str(generation_dir.resolve())
 
 
+def save_ideas_to_contents(
+    mode: str,
+    context: Optional[str],
+    ideas: IdeaList,
+    base_dir: str = "contents",
+) -> str:
+    """Persist the idea list JSON to the `contents` directory with a stable filename.
+
+    Creates the directory if missing and writes a single JSON file named
+    `{mode}_{slug}_{timestamp}.json`.
+
+    Returns absolute file path.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    slug_source = (context or mode or "ideas").strip()
+    slug = _slugify(slug_source)
+
+    root = Path.cwd() / base_dir
+    root.mkdir(parents=True, exist_ok=True)
+    file_path = root / f"{mode}_{slug}_{timestamp}.json"
+    # Use Pydantic's serializer to handle types like AnyUrl
+    file_path.write_text(ideas.model_dump_json(indent=2), encoding="utf-8")
+    return str(file_path.resolve())
+
+

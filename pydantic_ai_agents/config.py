@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     EXA_API_KEY: SecretStr | None = None
     LINKUP_API_KEY: SecretStr | None = None
     DEFAULT_NUM_IDEAS: int = Field(10, ge=1, le=100, description="Default number of ideas to generate")
+    PYA_RETRIES: int = Field(3, ge=0, le=10, description="Max attempts to run the agent on transient or formatting errors")
+    PYA_RETRY_BACKOFF_S: float = Field(1.0, ge=0.0, le=30.0, description="Seconds to wait between retry attempts")
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
