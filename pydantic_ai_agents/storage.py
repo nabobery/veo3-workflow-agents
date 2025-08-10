@@ -83,13 +83,13 @@ def save_ideas_output(
     return str(generation_dir.resolve())
 
 
-def save_ideas_to_contents(
+def save_ideas_to_directory(
     mode: str,
     context: Optional[str],
     ideas: IdeaList,
-    base_dir: str = "contents",
+    base_dir: str = "generated_prompts",
 ) -> str:
-    """Persist the idea list JSON to the `contents` directory with a stable filename.
+    """Persist the idea list JSON to the `generated_prompts` directory with a stable filename.
 
     Creates the directory if missing and writes a single JSON file named
     `{mode}_{slug}_{timestamp}.json`.
