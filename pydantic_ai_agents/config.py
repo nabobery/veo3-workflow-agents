@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
+from pydantic import Field, SecretStr
 
 
 class Settings(BaseSettings):
@@ -17,11 +19,15 @@ class Settings(BaseSettings):
 
     # Prefer Gemini models, aligning with credits availability
     # Valid examples: 'google:gemini-2.5-flash', 'google:gemini-2.5-pro'
-    PYA_MODEL: str = "google:gemini-2.5-flash"
-    TAVILY_API_KEY: str | None = None
-    EXA_API_KEY: str | None = None
-    LINKUP_API_KEY: str | None = None
-    DEFAULT_NUM_IDEAS: int = 10
+    PYA_MODEL: str = Field(
+        "google:gemini-2.5-flash",
+        pattern=r"^(google|openai|anthropic|groq):[a-z0-9._\-]+$",
+        description="Provider-prefixed model id, e.g., 'google:gemini-2.5-pro'",
+    )
+    TAVILY_API_KEY: SecretStr | None = None
+    EXA_API_KEY: SecretStr | None = None
+    LINKUP_API_KEY: SecretStr | None = None
+    DEFAULT_NUM_IDEAS: int = Field(10, ge=1, le=100, description="Default number of ideas to generate")
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
@@ -31,6 +37,7 @@ class Settings(BaseSettings):
     )
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
+import contextlib
 
 try:
     from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool as _duckduckgo_search_tool
@@ -26,18 +27,18 @@ def build_default_search_tools() -> List[object]:
     tools: List[object] = []
 
     if _duckduckgo_search_tool is not None:
-        try:
+        with contextlib.suppress(Exception):
             tools.append(_duckduckgo_search_tool())
-        except Exception:
-            # Non-fatal: continue without DDG
-            pass
 
     if settings.TAVILY_API_KEY and _tavily_search_tool is not None:
-        try:
-            tools.append(_tavily_search_tool(settings.TAVILY_API_KEY))
-        except Exception:
-            # Non-fatal: continue if Tavily cannot be constructed
-            pass
+        # unwrap SecretStr if provided
+        api_key = (
+            settings.TAVILY_API_KEY.get_secret_value()
+            if hasattr(settings.TAVILY_API_KEY, "get_secret_value")
+            else settings.TAVILY_API_KEY
+        )
+        with contextlib.suppress(Exception):
+            tools.append(_tavily_search_tool(api_key))
 
     return tools
 

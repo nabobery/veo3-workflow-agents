@@ -59,6 +59,9 @@ pydantic-ai-agents viral --topic "fitness content" --n 10
 pydantic-ai-agents variations "AI in healthcare" --n 10
 ```
 
+By default, runs persist results under a timestamped directory in `generated_prompts/`
+(including full JSON and per-idea text files).
+
 Outputs a JSON object with this shape:
 
 ```json

@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import List, Optional
 
 import json
+import contextlib
 from pydantic_ai import Agent
 
 from .config import get_settings
 from .tools import build_default_search_tools
-from .schemas import IdeaList, VideoPromptIdea
+from .schemas import IdeaList
 from .storage import save_ideas_output
 from .prompt_texts import load_prompt_text
 
@@ -33,7 +34,9 @@ def _parse_ideas_output(raw_output: object) -> IdeaList:
     """
     if isinstance(raw_output, str):
         return IdeaList.model_validate_json(raw_output)
-    # If it's already structured, coerce to JSON string first
+    if isinstance(raw_output, dict):
+        return IdeaList.model_validate(raw_output)
+    # Fallback: attempt JSON serialization if the object isn't directly valid
     return IdeaList.model_validate_json(json.dumps(raw_output))
 
 
@@ -46,7 +49,7 @@ def generate_video_prompt_ideas_simple(topic: str, num_ideas: Optional[int] = No
     """
 
     settings = get_settings()
-    n = num_ideas or settings.DEFAULT_NUM_IDEAS
+    n = settings.DEFAULT_NUM_IDEAS if num_ideas is None else num_ideas
 
     template = load_prompt_text("simple_search_prompt.txt")
     system_prompt = template.replace("{n}", str(n))
@@ -54,11 +57,8 @@ def generate_video_prompt_ideas_simple(topic: str, num_ideas: Optional[int] = No
     agent = _build_agent(system_prompt)
     result = agent.run_sync(topic)
     ideas = _parse_ideas_output(result.output)
-    try:
+    with contextlib.suppress(Exception):
         save_ideas_output(mode="simple", context=topic, ideas=ideas)
-    except Exception:
-        # Non-fatal persistence error should not block usage
-        pass
     return ideas
 
 
@@ -70,7 +70,7 @@ def generate_video_prompt_ideas_viral(query: Optional[str] = None, num_ideas: Op
     """
 
     settings = get_settings()
-    n = num_ideas or settings.DEFAULT_NUM_IDEAS
+    n = settings.DEFAULT_NUM_IDEAS if num_ideas is None else num_ideas
 
     base_instruction = load_prompt_text("viral_topic_prompt.txt").replace("{n}", str(n))
 
@@ -83,10 +83,8 @@ def generate_video_prompt_ideas_viral(query: Optional[str] = None, num_ideas: Op
     agent = _build_agent(system_prompt)
     result = agent.run_sync("Find viral topics and propose video prompt ideas")
     ideas = _parse_ideas_output(result.output)
-    try:
+    with contextlib.suppress(Exception):
         save_ideas_output(mode="viral", context=(query or ""), ideas=ideas)
-    except Exception:
-        pass
     return ideas
 
 
@@ -98,17 +96,15 @@ def generate_variations_for_topic(topic: str, num_ideas: Optional[int] = None) -
     """
 
     settings = get_settings()
-    n = num_ideas or settings.DEFAULT_NUM_IDEAS
+    n = settings.DEFAULT_NUM_IDEAS if num_ideas is None else num_ideas
 
     system_prompt = load_prompt_text("topic_variation_prompt.txt").replace("{n}", str(n))
 
     agent = _build_agent(system_prompt)
     result = agent.run_sync(topic)
     ideas = _parse_ideas_output(result.output)
-    try:
+    with contextlib.suppress(Exception):
         save_ideas_output(mode="variations", context=topic, ideas=ideas)
-    except Exception:
-        pass
     return ideas
 
 

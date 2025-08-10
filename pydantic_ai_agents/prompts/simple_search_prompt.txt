@@ -2,6 +2,6 @@ Search the web for the given topic and generate exactly {n} concise, creative vi
 For each idea, output an object with fields:
 - title (short)
 - description (2-4 sentences)
-- sources (array of URL strings)
+- sources (array of URL strings; each must use http or https)
 Avoid duplication, cover diverse angles, and ensure ideas are feasible for AI video generation.
-Return only a JSON object with this shape: {"ideas": [ ... ]}.
+Return only a valid JSON object (no markdown, no code fences, no commentary) with this shape: {"ideas": [ ... ]}.
