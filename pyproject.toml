@@ -10,7 +10,16 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "python-dotenv>=1.1.1",
     "defusedxml>=0.7.1",
+    "pydantic-ai>=0.6.2",
+    "tavily-python>=0.7.10",
 ]
 
 [project.scripts]
 langraph-agents = "langraph_agents.cli:main"
+pydantic-ai-agents = "pydantic_ai_agents.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+pydantic_ai_agents = ["prompts/*"]

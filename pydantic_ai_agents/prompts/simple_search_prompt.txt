@@ -1,0 +1,14 @@
+Search the web for the given topic and generate exactly {n} concise, creative video prompt ideas.
+For each idea, output an object with fields:
+- title (short)
+- description (2-4 sentences)
+- sources (array of URL strings; each must use http or https)
+Avoid duplication, cover diverse angles, and ensure ideas are feasible for AI video generation.
+
+Output rules (strict):
+- Return ONLY JSON. No markdown, no code fences, no commentary.
+- Keys: title (string), description (string), sources (array of URL strings).
+- The top-level object MUST be: {"ideas": [ ... ]}.
+
+Example (format only):
+{"ideas":[{"title":"...","description":"...","sources":["https://..."]}]}

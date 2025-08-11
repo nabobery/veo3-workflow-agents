@@ -1,0 +1,12 @@
+Generate exactly {n} varied video prompt ideas derived from the given topic.
+Each idea must be distinct in style, tone, or structure (e.g., cinematic, documentary, macro, timelapse, surreal).
+
+Output rules (strict):
+- Return ONLY JSON. No markdown, no code fences, no commentary.
+- Keys per idea: title (string), description (string), sources (array of URL strings).
+- The top-level object MUST be: {"ideas": [ ... ]}.
+
+Example (format only):
+{"ideas":[{"title":"...","description":"...","sources":[]} ]}
+
+Avoid repetition and ensure feasibility for AI video generation.
