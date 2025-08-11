@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import List, Optional
 
 import json
-import contextlib
 import re
 import time
 from pydantic_ai import Agent
@@ -25,7 +24,8 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
         tools.extend(extra_tools)
 
     # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
-    api_key = settings.GOOGLE_API_KEY.get_secret_value()
+    google_secret = getattr(settings, "GOOGLE_API_KEY", None)
+    api_key = google_secret.get_secret_value() if google_secret else None
     provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
 
     model = GoogleModel(
@@ -44,7 +44,7 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
             name="IdeaList",
             description="Return { ideas: [ {title, description, sources, trend_score?} ] }."
         ),
-        retries=settings.PYA_RETRIES,
+        retries=0,  # rely on external _run_agent_with_retries for backoff
         output_retries=None,
     )
     return agent
@@ -89,7 +89,11 @@ def _parse_ideas_output(raw_output: object) -> IdeaList:
             pass
         # Extract best-effort JSON object and retry
         cleaned = _extract_json_object(_strip_code_fences(text))
-        return IdeaList.model_validate_json(cleaned)
+        try:
+            return IdeaList.model_validate_json(cleaned)
+        except Exception as e:
+            preview = text[:300].replace("\n", "\\n")
+            raise ValueError(f"Failed to parse IdeaList from agent output. Preview={preview!r}") from e
     if isinstance(raw_output, dict):
         return IdeaList.model_validate(raw_output)
     # Pydantic models in general
@@ -128,6 +132,8 @@ def generate_video_prompt_ideas_simple(topic: str, num_ideas: Optional[int] = No
 
     settings = get_settings()
     n = settings.DEFAULT_NUM_IDEAS if num_ideas is None else num_ideas
+    if n <= 0:
+        n = settings.DEFAULT_NUM_IDEAS
 
     template = load_prompt_text("simple_search_prompt.txt")
     system_prompt = template.replace("{n}", str(n))
@@ -146,6 +152,8 @@ def generate_video_prompt_ideas_viral(query: Optional[str] = None, num_ideas: Op
 
     settings = get_settings()
     n = settings.DEFAULT_NUM_IDEAS if num_ideas is None else num_ideas
+    if n <= 0:
+        n = settings.DEFAULT_NUM_IDEAS
 
     base_instruction = load_prompt_text("viral_topic_prompt.txt").replace("{n}", str(n))
 
@@ -169,6 +177,8 @@ def generate_variations_for_topic(topic: str, num_ideas: Optional[int] = None) -
 
     settings = get_settings()
     n = settings.DEFAULT_NUM_IDEAS if num_ideas is None else num_ideas
+    if n <= 0:
+        n = settings.DEFAULT_NUM_IDEAS
 
     system_prompt = load_prompt_text("topic_variation_prompt.txt").replace("{n}", str(n))
 

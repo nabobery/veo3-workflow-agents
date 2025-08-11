@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 
 from .agents import (
@@ -21,24 +20,24 @@ def main(argv: list[str] | None = None) -> int:
     # Support either --mode or subcommands for ergonomics
     parser.add_argument("--mode", choices=["simple", "viral", "variations"], help="Agent mode")
     parser.add_argument("--topic", type=str, help="Topic or user context (required for simple/variations)")
-    parser.add_argument("--n", type=int, help="Number of ideas (default: 10)")
+    parser.add_argument("--n", type=int, help="Number of ideas (default: from settings)")
 
     sub = parser.add_subparsers(dest="command")
 
     # simple
     p_simple = sub.add_parser("simple", help="Use general web search + LLM creativity")
     p_simple.add_argument("topic", type=str, help="Topic or query to explore")
-    p_simple.add_argument("--n", type=int, default=None, help="Number of ideas (default: 10)")
+    p_simple.add_argument("--n", type=int, default=None, help="Number of ideas (default: from settings)")
 
     # viral
     p_viral = sub.add_parser("viral", help="Research viral/trending topics and propose ideas")
     p_viral.add_argument("--topic", type=str, default=None, help="Optional user context/topic")
-    p_viral.add_argument("--n", type=int, default=None, help="Number of ideas (default: 10)")
+    p_viral.add_argument("--n", type=int, default=None, help="Number of ideas (default: from settings)")
 
     # variations
     p_var = sub.add_parser("variations", help="Generate variations based on a user-provided topic")
     p_var.add_argument("topic", type=str, help="The user's topic or seed idea")
-    p_var.add_argument("--n", type=int, default=None, help="Number of ideas (default: 10)")
+    p_var.add_argument("--n", type=int, default=None, help="Number of ideas (default: from settings)")
 
     args = parser.parse_args(argv)
 
@@ -53,21 +52,27 @@ def main(argv: list[str] | None = None) -> int:
         topic = getattr(args, "topic", None)
         n = getattr(args, "n", None)
 
+        # Validate conflicting mode inputs and idea count
+        if args.mode and args.command and args.mode != args.command:
+            parser.error("Conflicting mode selection: choose either --mode or a subcommand, and ensure they match")
+        if n is not None and n <= 0:
+            parser.error("'n' must be a positive integer")
+
         if mode == "simple":
-            if not topic:
+            if not topic or not str(topic).strip():
                 parser.error("'simple' mode requires --topic or a positional topic in the subcommand form")
             result = generate_video_prompt_ideas_simple(topic, n)
         elif mode == "viral":
             result = generate_video_prompt_ideas_viral(topic, n)
         elif mode == "variations":
-            if not topic:
+            if not topic or not str(topic).strip():
                 parser.error("'variations' mode requires --topic or a positional topic in the subcommand form")
             result = generate_variations_for_topic(topic, n)
         else:
             parser.print_help()
             return 2
 
-        # Persist JSON to the `contents` directory and print the saved path
+        # Persist JSON to the `generated_prompts` directory and print the saved path
         saved_path = save_ideas_to_directory(mode or "unknown", topic, result)
         print(saved_path)
         return 0
