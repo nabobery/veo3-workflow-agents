@@ -17,8 +17,8 @@ import logging
 from functools import lru_cache
 from xml.sax.saxutils import escape as xml_escape
 
-from prompt_enhancer_state import VideoPromptState, ConfigSettings
-from prompts import (
+from .prompt_enhancer_state import VideoPromptState, ConfigSettings
+from .prompts import (
     CONCEPT_SYSTEM_PROMPT,
     CONCEPT_HUMAN_PROMPT,
     DETAILS_SYSTEM_PROMPT,
@@ -27,12 +27,10 @@ from prompts import (
     JSON_HUMAN_PROMPT,
     JSON_SYSTEM_PROMPT_STRICT,
     JSON_HUMAN_PROMPT_STRICT,
-    XML_SYSTEM_PROMPT,
-    XML_HUMAN_PROMPT,
     NATURAL_SYSTEM_PROMPT,
     NATURAL_HUMAN_PROMPT,
 )
-from config import get_settings
+from .config import get_settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

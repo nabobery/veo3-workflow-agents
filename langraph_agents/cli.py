@@ -7,14 +7,12 @@ Provides a simple interface to run examples, interactive mode, or enhance a sing
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from typing import Dict, Any
 
 from pydantic_core import ValidationError
 
-from config import get_settings
-from example_usage import run_all_examples
+from .config import get_settings
 
 
 def _clear_screen() -> None:

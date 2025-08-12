@@ -7,8 +7,8 @@ with various types of input prompts and shows the different output formats.
 
 import json
 from typing import Dict, Any
-from prompt_enhancer_graph import PromptEnhancerWorkflow, enhance_video_prompt
-from config import get_settings
+from .prompt_enhancer_graph import PromptEnhancerWorkflow, enhance_video_prompt
+from .config import get_settings
 from pydantic import ValidationError
 
 
