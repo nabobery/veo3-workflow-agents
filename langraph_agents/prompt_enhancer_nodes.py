@@ -60,7 +60,7 @@ def initialize_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
             google_api_key=settings.GOOGLE_API_KEY,
             model=settings.GOOGLE_MODEL,
             temperature=temperature,
-            max_tokens=2048,
+            thinking_budget=1024,
             top_p=0.9,
         )
     except Exception as err:
