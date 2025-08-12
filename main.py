@@ -11,7 +11,7 @@ try:
     from workflow_main import main
 except ImportError as e:
     print(f"Error: Failed to import workflow_main module: {e}", file=sys.stderr)
-    raise SystemExit(1)
+    raise SystemExit(1) from e
 
 
 if __name__ == "__main__":
