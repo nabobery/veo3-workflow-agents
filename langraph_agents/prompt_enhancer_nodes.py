@@ -17,8 +17,8 @@ import logging
 from functools import lru_cache
 from xml.sax.saxutils import escape as xml_escape
 
-from prompt_enhancer_state import VideoPromptState, ConfigSettings
-from prompts import (
+from .prompt_enhancer_state import VideoPromptState, ConfigSettings
+from .prompts import (
     CONCEPT_SYSTEM_PROMPT,
     CONCEPT_HUMAN_PROMPT,
     DETAILS_SYSTEM_PROMPT,
@@ -27,12 +27,10 @@ from prompts import (
     JSON_HUMAN_PROMPT,
     JSON_SYSTEM_PROMPT_STRICT,
     JSON_HUMAN_PROMPT_STRICT,
-    XML_SYSTEM_PROMPT,
-    XML_HUMAN_PROMPT,
     NATURAL_SYSTEM_PROMPT,
     NATURAL_HUMAN_PROMPT,
 )
-from config import get_settings
+from .config import get_settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -62,7 +60,7 @@ def initialize_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
             google_api_key=settings.GOOGLE_API_KEY,
             model=settings.GOOGLE_MODEL,
             temperature=temperature,
-            max_tokens=2048,
+            thinking_budget=1024,
             top_p=0.9,
         )
     except Exception as err:
@@ -270,7 +268,7 @@ def generate_json_format(state: VideoPromptState) -> dict:
                 ("system", JSON_SYSTEM_PROMPT_STRICT),
                 ("human", JSON_HUMAN_PROMPT_STRICT),
             ])
-            retry_llm = initialize_llm(temperature=0.2)
+            retry_llm = _get_cached_llm(temperature=0.2)
             retry_chain = strict_template | retry_llm | parser
 
             last_err: Optional[Exception] = None
@@ -365,7 +363,7 @@ def generate_natural_language_format(state: VideoPromptState) -> dict:
     """
     logger.info("Generating natural language format...")
     
-    llm = initialize_llm()
+    llm = _get_cached_llm()
     
     system_prompt = NATURAL_SYSTEM_PROMPT
     human_prompt = NATURAL_HUMAN_PROMPT
@@ -520,13 +518,11 @@ def _create_fallback_xml(state: VideoPromptState) -> str:
 
 
 def _clean_xml_output(xml_string: str) -> str:
-    """Clean and fix common XML issues"""
+    """Clean and fix common XML issues with proper escaping"""
     # Remove any text before <?xml declaration
     if "<?xml" in xml_string:
         xml_start = xml_string.find("<?xml")
         xml_string = xml_string[xml_start:]
-    
-    # Basic cleanup
-    xml_string = xml_string.replace("&", "&amp;")
-    
-    return xml_string
+
+    # Use proper XML escaping
+    return xml_escape(xml_string)

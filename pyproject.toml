@@ -17,6 +17,7 @@ dependencies = [
 [project.scripts]
 langraph-agents = "langraph_agents.cli:main"
 pydantic-ai-agents = "pydantic_ai_agents.cli:main"
+workflow-agents = "workflow_main:main"
 
 [tool.setuptools]
 include-package-data = true
