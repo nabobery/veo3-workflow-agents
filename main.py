@@ -1,8 +1,9 @@
 """
-Compatibility shim: delegate to package CLI so external runners can still invoke this repo root script.
+Compatibility shim: orchestrator entry. Delegates to combined workflow CLI so
+external runners can still invoke this repo root script.
 """
 
-from langraph_agents.cli import main
+from workflow_main import main
 
 
 if __name__ == "__main__":
