@@ -23,17 +23,21 @@ from langraph_agents.config import get_settings as get_lang_settings
 
 def _generate_ideas(mode: str, topic: Optional[str], n: Optional[int]) -> IdeaList:
     """Dispatch to the appropriate idea generator based on mode."""
+    allowed_modes = {"simple", "viral", "variations"}
+    if mode not in allowed_modes:
+        raise ValueError(f"Unknown mode: {mode}")
+
+    if mode in {"simple", "variations"}:
+        # topic is typed as Optional[str] by argparse; ensure non-empty string when required
+        if not topic or not topic.strip():
+            raise ValueError(f"'{mode}' mode requires a topic")
+
     if mode == "simple":
-        if not topic or not str(topic).strip():
-            raise ValueError("'simple' mode requires a topic")
         return generate_video_prompt_ideas_simple(topic, n)
     if mode == "viral":
         return generate_video_prompt_ideas_viral(topic, n)
-    if mode == "variations":
-        if not topic or not str(topic).strip():
-            raise ValueError("'variations' mode requires a topic")
-        return generate_variations_for_topic(topic, n)
-    raise ValueError(f"Unknown mode: {mode}")
+    # mode == "variations"
+    return generate_variations_for_topic(topic, n)
 
 
 def _run_pipeline(mode: str, topic: Optional[str], n: Optional[int], max_enhance: Optional[int]) -> int:
@@ -42,12 +46,20 @@ def _run_pipeline(mode: str, topic: Optional[str], n: Optional[int], max_enhance
     try:
         # LangGraph requires GOOGLE_API_KEY; surface error early
         get_lang_settings()
-    except ValidationError:
-        print("Error: GOOGLE_API_KEY environment variable not set for langraph_agents", file=sys.stderr)
+    except ValidationError as e:
+        if "GOOGLE_API_KEY" in str(e):
+            print("Error: GOOGLE_API_KEY environment variable not set for langraph_agents", file=sys.stderr)
+        else:
+            print(f"Error: Configuration validation failed: {e}", file=sys.stderr)
         return 1
 
     # 1) Generate ideas using Pydantic AI agents
     ideas = _generate_ideas(mode, topic, n)
+
+    # Validate ideas before proceeding
+    if not ideas or not ideas.ideas:
+        print("Warning: No ideas were generated", file=sys.stderr)
+        return 1
 
     # Persist the raw ideas JSON for reference
     try:
@@ -129,9 +141,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     # Gather topic/n from either root or subparser
-    topic = getattr(args, "topic", None)
-    n = getattr(args, "n", None)
-    max_enhance = getattr(args, "max_enhance", None)
+    if args.command:  # Subcommand was used
+        topic = args.topic if hasattr(args, "topic") else None
+        n = args.n if hasattr(args, "n") else None
+        max_enhance = args.max_enhance if hasattr(args, "max_enhance") else None
+    else:  # Root-level flags were used
+        topic = args.topic
+        n = args.n
+        max_enhance = args.max_enhance
 
     # Validate numeric inputs
     if n is not None and n <= 0:
