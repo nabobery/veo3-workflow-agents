@@ -34,7 +34,7 @@ def create_prompt_enhancer_graph() -> CompiledStateGraph:
     
     Creates a linear workflow:
     START -> generate_concept -> enhance_details -> 
-    [parallel: json_format, xml_format, natural_language_format] -> 
+    [parallel: generate_json, generate_xml, generate_natural_language] -> 
     finalize_results -> END
     
     Returns:
@@ -224,15 +224,17 @@ class PromptEnhancerWorkflow:
                     "quality_score": 0.0,
                     "saved_dir": "",
                 }
-                # Construct a lightweight state-like object for storage helper
-                class _LiteState:
-                    enhanced_concept = None
-                    negative_prompt = None
-                    config = None
+                # Create a minimal state object for storage helper
+                from types import SimpleNamespace
+                minimal_state = SimpleNamespace(
+                    enhanced_concept=None,
+                    negative_prompt=None,
+                    config=None,
+                )
 
                 saved_dir = save_generation_outputs(
                     original_prompt=user_prompt.strip(),
-                    full_state=_LiteState(),
+                    full_state=minimal_state,
                     output=minimal_output,
                     base_dir="prompt_outputs",
                 )

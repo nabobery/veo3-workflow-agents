@@ -65,7 +65,7 @@ def display_formats(output: Dict[str, Any], format_choice: str) -> None:
 
 def enhance_single_prompt(prompt: str, output_format: str, verbose: bool) -> None:
     # Lazy import to avoid heavy deps at CLI help time
-    from prompt_enhancer_graph import enhance_video_prompt, PromptEnhancerWorkflow
+    from .prompt_enhancer_graph import enhance_video_prompt, PromptEnhancerWorkflow
     print(f"🎬 Enhancing prompt: {prompt}")
     print("=" * 60)
 
@@ -93,7 +93,7 @@ def enhance_single_prompt(prompt: str, output_format: str, verbose: bool) -> Non
 
 
 def interactive_mode() -> None:
-    from prompt_enhancer_graph import PromptEnhancerWorkflow
+    from .prompt_enhancer_graph import PromptEnhancerWorkflow
     print("🎬 Video Prompt Enhancer - Interactive Mode")
     print("=" * 50)
     print("Enter video prompts to enhance (type 'quit' to exit)")
@@ -210,7 +210,7 @@ Examples:
     try:
         if args.examples:
             # Lazy import to avoid heavy deps at CLI help time
-            from example_usage import run_all_examples
+            from .example_usage import run_all_examples
             run_all_examples()
         elif args.interactive:
             interactive_mode()

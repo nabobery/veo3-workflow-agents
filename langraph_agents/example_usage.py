@@ -200,4 +200,11 @@ def run_all_examples():
 
 
 if __name__ == "__main__":
-    run_all_examples()
+    import sys
+    try:
+        run_all_examples()
+    except ImportError as e:
+        print("Error: This module must be run as part of the langraph_agents package.")
+        print("Use: python -m langraph_agents.example_usage")
+        print(f"Details: {e}")
+        sys.exit(1)

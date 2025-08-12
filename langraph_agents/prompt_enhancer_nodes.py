@@ -268,7 +268,7 @@ def generate_json_format(state: VideoPromptState) -> dict:
                 ("system", JSON_SYSTEM_PROMPT_STRICT),
                 ("human", JSON_HUMAN_PROMPT_STRICT),
             ])
-            retry_llm = initialize_llm(temperature=0.2)
+            retry_llm = _get_cached_llm(temperature=0.2)
             retry_chain = strict_template | retry_llm | parser
 
             last_err: Optional[Exception] = None
@@ -363,7 +363,7 @@ def generate_natural_language_format(state: VideoPromptState) -> dict:
     """
     logger.info("Generating natural language format...")
     
-    llm = initialize_llm()
+    llm = _get_cached_llm()
     
     system_prompt = NATURAL_SYSTEM_PROMPT
     human_prompt = NATURAL_HUMAN_PROMPT
@@ -518,13 +518,11 @@ def _create_fallback_xml(state: VideoPromptState) -> str:
 
 
 def _clean_xml_output(xml_string: str) -> str:
-    """Clean and fix common XML issues"""
+    """Clean and fix common XML issues with proper escaping"""
     # Remove any text before <?xml declaration
     if "<?xml" in xml_string:
         xml_start = xml_string.find("<?xml")
         xml_string = xml_string[xml_start:]
-    
-    # Basic cleanup
-    xml_string = xml_string.replace("&", "&amp;")
-    
-    return xml_string
+
+    # Use proper XML escaping
+    return xml_escape(xml_string)
