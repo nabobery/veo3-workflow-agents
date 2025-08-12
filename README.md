@@ -92,12 +92,12 @@ python langraph_agents/test_setup.py
 
 ## Project structure
 
-- `langraph_agents/`: Agent package (graph, nodes, state, CLI, storage)
-- `pydantic_ai_agents/`: Idea generation agents and CLI
-- `prompt_outputs/`: Saved generations
-- `generated_prompts/`: Saved idea lists (raw JSON) from `pydantic_ai_agents`
-- `workflow_main.py`: Orchestrator CLI combining idea generation and enhancement
-- `main.py`: Delegates to the orchestrator (`workflow_main.main`)
+`pydantic_ai_agents/`: Idea generation agents and CLI
+`langraph_agents/`: Prompt Enhancement agents and CLI
+`workflow_main.py`: Orchestrator CLI combining idea generation and enhancement
+`main.py`: Delegates to the orchestrator (`workflow_main.main`)
+`prompt_outputs/` (created at runtime): Enhanced prompt outputs
+`generated_prompts/` (created at runtime): Raw JSON idea lists
 
 ## Roadmap
 
