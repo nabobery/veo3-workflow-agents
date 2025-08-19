@@ -44,11 +44,12 @@ def _run_pipeline(mode: str, topic: Optional[str], n: Optional[int], max_enhance
     # Touch settings early to surface configuration issues
     get_pyai_settings()
     try:
-        # LangGraph requires GOOGLE_API_KEY; surface error early
+        # LangGraph requires API key; surface error early
         get_lang_settings()
     except ValidationError as e:
         if "GOOGLE_API_KEY" in str(e):
             print("Error: GOOGLE_API_KEY environment variable not set for langraph_agents", file=sys.stderr)
+            print("Please set GOOGLE_API_KEY with your Google AI Studio API key", file=sys.stderr)
         else:
             print(f"Error: Configuration validation failed: {e}", file=sys.stderr)
         return 1
