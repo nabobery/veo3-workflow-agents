@@ -66,10 +66,7 @@ class Veo3Config(BaseSettings):
         description="Default video aspect ratio"
     )
     
-    DEFAULT_RESOLUTION: str = Field(
-        default="1080p",
-        description="Default video resolution"
-    )
+
     
     # Agent Configuration
     DEFAULT_TEMPERATURE: float = Field(
@@ -210,7 +207,6 @@ class Veo3ClientManager:
         self,
         duration_seconds: Optional[int] = None,
         aspect_ratio: Optional[str] = None,
-        resolution: Optional[str] = None,
         enhance_prompt: Optional[bool] = None,
         generate_audio: Optional[bool] = None,
         person_generation: Optional[str] = None
@@ -225,7 +221,6 @@ class Veo3ClientManager:
             aspect_ratio=aspect_ratio or self.config.DEFAULT_ASPECT_RATIO,
             number_of_videos=1,  # Always 1 for Veo3 as per documentation
             duration_seconds=duration_seconds or self.config.DEFAULT_DURATION_SECONDS,
-            resolution=resolution or self.config.DEFAULT_RESOLUTION,
             person_generation=person_generation or ("allow_adult" if self.config.ENABLE_ADULT_GENERATION else "allow_none"),
             enhance_prompt=enhance_prompt if enhance_prompt is not None else self.config.ENABLE_PROMPT_ENHANCEMENT,
             generate_audio=generate_audio if generate_audio is not None else self.config.ENABLE_AUDIO_GENERATION,
