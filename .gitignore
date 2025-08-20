@@ -208,3 +208,7 @@ __marimo__/
 
 prompt_outputs/*
 generated_prompts/*
+
+# ignore all md files except README.md
+*.md
+!README.md
