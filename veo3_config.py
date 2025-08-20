@@ -195,7 +195,6 @@ class Veo3ClientManager:
         if self._genai_client is None:
             # Configure the library (following Get_started_Veo.ipynb pattern)
             api_key = self.config.GOOGLE_API_KEY.get_secret_value()
-            genai.configure(api_key=api_key)
             
             # Initialize client (exact pattern from notebook)
             self._genai_client = genai.Client(api_key=api_key)
