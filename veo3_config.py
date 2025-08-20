@@ -45,6 +45,7 @@ class Veo3Config(BaseSettings):
     # Model Configuration
     VEO3_MODEL: str = Field(
         default="veo-3.0-fast-generate-preview",
+        # default="veo-2.0-generate-001",
         description="Veo3 model variant for video generation"
     )
     
@@ -223,13 +224,14 @@ class Veo3ClientManager:
         Following the pattern from Get_started_Veo.ipynb where config is created
         using types.GenerateVideosConfig with specific parameters.
         """
+        # Commenting it because was getting bad request as these parameters are not supported by the model yet
         return types.GenerateVideosConfig(
             aspect_ratio=aspect_ratio or self.config.DEFAULT_ASPECT_RATIO,
             number_of_videos=1,  # Always 1 for Veo3 as per documentation
-            duration_seconds=duration_seconds or self.config.DEFAULT_DURATION_SECONDS,
-            resolution=resolution or self.config.DEFAULT_RESOLUTION,
-            person_generation=person_generation or ("allow_adult" if self.config.ENABLE_ADULT_GENERATION else "allow_none"),
-            enhance_prompt=enhance_prompt if enhance_prompt is not None else self.config.ENABLE_PROMPT_ENHANCEMENT,
+            # duration_seconds=duration_seconds or self.config.DEFAULT_DURATION_SECONDS,
+            # resolution=resolution or self.config.DEFAULT_RESOLUTION,
+            # person_generation=person_generation or ("allow_adult" if self.config.ENABLE_ADULT_GENERATION else "allow_none"),
+            # enhance_prompt=enhance_prompt if enhance_prompt is not None else self.config.ENABLE_PROMPT_ENHANCEMENT,
         )
     
     def validate_setup(self) -> Dict[str, Any]:
