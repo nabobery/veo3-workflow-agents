@@ -23,31 +23,35 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
     if extra_tools:
         tools.extend(extra_tools)
 
-    # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
-    google_secret = getattr(settings, "GOOGLE_API_KEY", None)
-    api_key = google_secret.get_secret_value() if google_secret else None
-    provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
+    try:
+        # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
+        google_secret = getattr(settings, "GOOGLE_API_KEY", None)
+        api_key = google_secret.get_secret_value() if google_secret else None
+        provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
 
-    model = GoogleModel(
-        settings.PYA_MODEL,
-        provider=provider,
-        settings=GoogleModelSettings(temperature=0.4, google_thinking_config={"thinking_budget": 2048}),
-    )
+        model = GoogleModel(
+            settings.PYA_MODEL,
+            provider=provider,
+            settings=GoogleModelSettings(temperature=0.4, google_thinking_config={"thinking_budget": 2048}),
+        )
 
-    # Set retries to improve resilience to transient errors
-    agent = Agent(
-        model=model,
-        tools=tools,
-        system_prompt=system_prompt,
-        output_type=PromptedOutput(
-            IdeaList,
-            name="IdeaList",
-            description="Return { ideas: [ {title, description, sources, trend_score?} ] }."
-        ),
-        retries=0,  # rely on external _run_agent_with_retries for backoff
-        output_retries=None,
-    )
-    return agent
+        # Set retries to improve resilience to transient errors
+        agent = Agent(
+            model=model,
+            tools=tools,
+            system_prompt=system_prompt,
+            output_type=PromptedOutput(
+                IdeaList,
+                name="IdeaList",
+                description="Return { ideas: [ {title, description, sources, trend_score?} ] }."
+            ),
+            retries=0,  # rely on external _run_agent_with_retries for backoff
+            output_retries=None,
+        )
+        return agent
+    except Exception as e:
+        print(f"Error building agent: {e}")
+        raise
 
 
 def _strip_code_fences(text: str) -> str:
@@ -109,6 +113,7 @@ def _run_agent_with_retries(agent: Agent, user_prompt: str) -> IdeaList:
     attempts = max(1, settings.PYA_RETRIES)
     for i in range(attempts):
         try:
+            # Use run_sync for synchronous execution
             result = agent.run_sync(user_prompt)
             # If structured output is enabled, this is already an IdeaList
             if isinstance(result.output, IdeaList):
@@ -116,6 +121,8 @@ def _run_agent_with_retries(agent: Agent, user_prompt: str) -> IdeaList:
             return _parse_ideas_output(result.output)
         except Exception as e:
             last_err = e
+            # Log the specific error for debugging
+            print(f"Attempt {i+1}/{attempts} failed: {e}")
             if i < attempts - 1 and settings.PYA_RETRY_BACKOFF_S > 0:
                 time.sleep(settings.PYA_RETRY_BACKOFF_S)
     assert last_err is not None

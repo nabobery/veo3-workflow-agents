@@ -66,8 +66,6 @@ class Veo3Config(BaseSettings):
         description="Default video aspect ratio"
     )
     
-
-    
     # Agent Configuration
     DEFAULT_TEMPERATURE: float = Field(
         default=0.7,
