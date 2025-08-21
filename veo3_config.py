@@ -131,7 +131,12 @@ class Veo3Config(BaseSettings):
     
     @field_validator("VEO3_MODEL")
     def validate_veo3_model(cls, v):
-        """Validate Veo3 model identifier"""
+        """
+        Validate that the VEO3 model identifier is one of the supported model names.
+        
+        Raises a ValueError if the provided value is not one of:
+        ["veo-3.0-generate-preview", "veo-3.0-fast-generate-preview", "veo-2.0-generate-001"].
+        """
         valid_models = [
             "veo-3.0-generate-preview",
             "veo-3.0-fast-generate-preview", 
@@ -143,14 +148,32 @@ class Veo3Config(BaseSettings):
     
     @field_validator("GEMINI_MODEL")
     def validate_gemini_model(cls, v):
-        """Validate Gemini model identifier"""
+        """
+        Validate that a Gemini model identifier starts with the required prefix.
+        
+        Checks that the provided model string begins with "gemini-". Returns the original
+        value if valid; raises ValueError if the prefix is missing.
+        """
         if not v.startswith("gemini-"):
             raise ValueError("GEMINI_MODEL must start with 'gemini-'")
         return v
     
     @field_validator("DEFAULT_ASPECT_RATIO")
     def validate_aspect_ratio(cls, v):
-        """Validate aspect ratio format"""
+        """
+        Validate that DEFAULT_ASPECT_RATIO is one of the supported aspect ratios.
+        
+        This validator enforces that the provided value is one of: "16:9", "9:16", or "1:1".
+        
+        Parameters:
+            v (str): Aspect ratio string to validate.
+        
+        Returns:
+            str: The validated aspect ratio (same as input) if valid.
+        
+        Raises:
+            ValueError: If `v` is not one of the allowed aspect ratios.
+        """
         valid_ratios = ["16:9", "9:16", "1:1"]
         if v not in valid_ratios:
             raise ValueError(f"DEFAULT_ASPECT_RATIO must be one of: {valid_ratios}")
@@ -158,7 +181,18 @@ class Veo3Config(BaseSettings):
 
     @field_validator("DEFAULT_RESOLUTION")
     def validate_resolution(cls, v):
-        """Validate resolution format"""
+        """
+        Validate that the resolution value is one of the supported options.
+        
+        Parameters:
+            v (str): Resolution string to validate (e.g., "720p", "1080p").
+        
+        Returns:
+            str: The validated resolution string.
+        
+        Raises:
+            ValueError: If `v` is not one of the supported resolutions: ["720p", "1080p"].
+        """
         valid_resolutions = ["720p", "1080p"]
         if v not in valid_resolutions:
             raise ValueError(f"DEFAULT_RESOLUTION must be one of: {valid_resolutions}")
@@ -182,19 +216,24 @@ class Veo3ClientManager:
     """
     
     def __init__(self, config: Veo3Config):
+        """
+        Initialize the Veo3ClientManager with a Veo3Config.
+        
+        Parameters:
+            config (Veo3Config): Configuration instance providing API keys, model defaults, and runtime options used by the client manager.
+        """
         self.config = config
         self._genai_client: Optional[genai.Client] = None
         
     def get_genai_client(self) -> genai.Client:
         """
-        Initialize and return Google GenAI client.
+        Return a lazily initialized Google GenAI client configured with the API key from the Veo3Config.
         
-        Following the exact pattern from Get_started_Veo.ipynb:
-        ```python
-        from google import genai
-        GOOGLE_API_KEY = userdata.get('GOOGLE_API_KEY')
-        client = genai.Client(api_key=GOOGLE_API_KEY)
-        ```
+        This method initializes and caches a genai.Client on first call using the secret value from
+        self.config.GOOGLE_API_KEY. Subsequent calls return the same client instance.
+        
+        Returns:
+            genai.Client: An authenticated GenAI client ready for use.
         """
         if self._genai_client is None:
             # Configure the library (following Get_started_Veo.ipynb pattern)
@@ -219,10 +258,21 @@ class Veo3ClientManager:
         person_generation: Optional[str] = None
     ) -> types.GenerateVideosConfig:
         """
-        Create video generation config with defaults.
+        Build a GenerateVideosConfig using Veo3Config defaults.
         
-        Following the pattern from Get_started_Veo.ipynb where config is created
-        using types.GenerateVideosConfig with specific parameters.
+        Returns a types.GenerateVideosConfig configured with:
+        - aspect_ratio: provided value or config.DEFAULT_ASPECT_RATIO
+        - number_of_videos: always 1 (Veo3 usage)
+        
+        Parameters:
+            duration_seconds (Optional[int]): Desired video length in seconds (config enforces valid range). Present for future use but not currently applied to the returned config.
+            aspect_ratio (Optional[str]): Aspect ratio override (e.g., "16:9", "9:16", "1:1").
+            resolution (Optional[str]): Resolution override (e.g., "720p", "1080p"). Present for future use but not currently applied.
+            enhance_prompt (Optional[bool]): Whether to enable prompt enhancement. Present for future use but not currently applied.
+            person_generation (Optional[str]): Person-generation policy (e.g., "allow_adult", "allow_none"). Present for future use but not currently applied.
+        
+        Returns:
+            types.GenerateVideosConfig: Video generation configuration object ready to pass to the Veo3 generation call. Note that several optional parameters are accepted by this helper for future compatibility but are intentionally not included in the returned config because the current target model does not support them.
         """
         # Commenting it because was getting bad request as these parameters are not supported by the model yet
         return types.GenerateVideosConfig(
@@ -235,7 +285,19 @@ class Veo3ClientManager:
         )
     
     def validate_setup(self) -> Dict[str, Any]:
-        """Validate the complete setup"""
+        """
+        Validate that the module is correctly configured and that the GenAI client can be initialized.
+        
+        Performs a basic runtime check: attempts to create/obtain the GenAI client and reports overall validity, readiness, and any errors or warnings.
+        
+        Returns:
+            Dict[str, Any]: A dictionary with the following keys:
+                - config_valid (bool): True if preliminary checks passed; set to False on exception.
+                - genai_client_ready (bool): True if the GenAI client was successfully initialized.
+                - errors (List[str]): Error messages encountered during validation.
+                - warnings (List[str]): Non-fatal warnings discovered during validation.
+                - notes (List[str], optional): Informational notes about the validation (e.g., that Vertex AI is not used).
+        """
         validation_results = {
             "config_valid": True,
             "genai_client_ready": False,
@@ -266,7 +328,14 @@ _client_manager: Optional[Veo3ClientManager] = None
 
 
 def get_veo3_config() -> Veo3Config:
-    """Get global configuration instance"""
+    """
+    Return a singleton Veo3Config instance.
+    
+    Creates and caches a Veo3Config on first call (loads settings from environment and the module's configured .env file). Subsequent calls return the same instance.
+     
+    Returns:
+        Veo3Config: The global, lazily-initialized configuration object.
+    """
     global _config
     if _config is None:
         _config = Veo3Config()
@@ -288,7 +357,19 @@ def get_genai_client() -> genai.Client:
 
 
 def validate_veo3_setup() -> Dict[str, Any]:
-    """Validate complete Veo3 setup (convenience function)"""
+    """
+    Convenience wrapper that validates the global Veo3 configuration and GenAI client.
+    
+    Calls the singleton Veo3ClientManager.validate_setup() and returns its result.
+    
+    Returns:
+        dict: Validation result with keys:
+            - config_valid (bool): True if configuration appears valid.
+            - genai_client_ready (bool): True if the GenAI client was initialized successfully.
+            - errors (list[str]): List of error messages encountered.
+            - warnings (list[str]): List of non-fatal warnings.
+            - notes (list[str], optional): Additional informational notes about the setup.
+    """
     return get_client_manager().validate_setup()
 
 
