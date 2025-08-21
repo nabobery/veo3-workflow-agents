@@ -25,7 +25,26 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[Dict[str, Any]]:
-    """Generate and enhance prompts using the agent pipeline"""
+    """
+    Generate multiple prompt variations for a user prompt and enhance each with technical details.
+    
+    Given a user-provided prompt, this function uses an agent pipeline to:
+    - produce up to `num_ideas` initial prompt variations, and
+    - enhance each variation into a production-ready prompt with structured technical details and a quality score.
+    
+    Returns a list of dictionaries (one per idea) with the following keys:
+    - index (int): 1-based position in the returned list.
+    - title (str): short title for the idea.
+    - original (str): the original generated idea description.
+    - enhanced (str): the enhanced natural-language prompt (falls back to `original` on enhancement failure).
+    - technical_details (dict): structured technical data for video generation (may be empty on failure).
+    - quality_score (float): numeric quality score produced by the enhancer (defaults to 0.5 on enhancement failure).
+    - saved_dir (str): any path returned by the enhancer for auxiliary files (may be empty).
+    
+    Behavior notes:
+    - If no initial ideas are generated or an unexpected error occurs during the overall process, the function returns an empty list.
+    - Enhancement failures for individual ideas are handled per-item by falling back to the original description and a default quality_score of 0.5.
+    """
     print(f"🎭 Generating {num_ideas} enhanced prompts for: '{user_prompt}'")
     
     try:
@@ -88,7 +107,16 @@ def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[D
 
 
 def select_best_prompt(enhanced_prompts: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Select the best prompt based on quality score"""
+    """
+    Select the highest-quality enhanced prompt from a list.
+    
+    If `enhanced_prompts` is empty returns None. Otherwise, picks the prompt with the highest
+    `quality_score`, prints a brief summary (title, quality score, preview of the enhanced text,
+    and saved directory if present) to stdout, and returns the selected prompt dictionary.
+    
+    Returns:
+        The prompt dictionary with the highest `quality_score`, or `None` if no prompts were provided.
+    """
     if not enhanced_prompts:
         return None
     
@@ -116,7 +144,38 @@ def generate_video(
     resolution: str = "1080p",
     save_video: bool = True
 ) -> Dict[str, Any]:
-    """Generate video using Veo3 API"""
+    """
+    Generate a video from a natural-language prompt using the Veo3 API.
+    
+    Creates a Veo3 client via the module's configuration, starts a generation operation, polls until completion (5‑minute timeout), and attempts to retrieve the produced video bytes. If retrieval succeeds the function returns a result dict describing the generated video and metadata; on any failure it returns a dict with "success": False and an "error" string.
+    
+    Parameters:
+        prompt (str): Natural-language prompt describing the desired video.
+        duration_seconds (int): Target video duration in seconds.
+        aspect_ratio (str): Aspect ratio string (e.g., "16:9", "9:16").
+        resolution (str): Target resolution label (e.g., "1080p").
+        save_video (bool): If True, the final video bytes are written to a timestamped .mp4 file and the filename is included in the returned dict.
+    
+    Returns:
+        dict: On success:
+            {
+                "success": True,
+                "video_bytes": bytes,         # raw MP4 bytes
+                "operation_id": str,         # Veo3 operation identifier
+                "generation_time": float,    # seconds elapsed during generation
+                "config": {                  # echo of generation settings
+                    "duration_seconds": int,
+                    "aspect_ratio": str,
+                    "resolution": str
+                },
+                "filename": str (optional)   # present when save_video is True
+            }
+            On failure:
+            {
+                "success": False,
+                "error": str                # human-readable error message
+            }
+    """
     print(f"\n🎬 Starting video generation...")
     print(f"Prompt: {prompt[:100]}...")
     print(f"Settings: {duration_seconds}s, {aspect_ratio}, {resolution}")
@@ -230,7 +289,17 @@ def generate_video(
 
 
 def main():
-    """Main demo function"""
+    """
+    Run the CLI demo that generates AI-enhanced prompts and optionally creates a video via Veo3.
+    
+    Parses command-line arguments (prompt, --duration, --aspect-ratio, --no-audio, --num-ideas, --enhance-only), executes the three-step demo pipeline:
+    1. Generate and enhance prompt variations.
+    2. Select the best enhanced prompt.
+    3. Generate a video from the selected prompt (skipped if --enhance-only).
+    
+    Returns:
+        int: Exit code (0 on success, 1 on failure). Failures include inability to produce enhanced prompts or video-generation errors.
+    """
     parser = argparse.ArgumentParser(
         description="Demo Veo3 video generation with AI-enhanced prompts"
     )

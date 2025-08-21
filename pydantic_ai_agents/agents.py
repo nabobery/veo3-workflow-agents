@@ -18,6 +18,21 @@ from .prompt_texts import load_prompt_text
 
 
 def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None) -> Agent:
+    """
+    Create and configure an Agent backed by a GoogleModel and a set of tools.
+    
+    Builds default search/tools, optionally extends them with extra_tools, constructs a GoogleProvider (using GOOGLE_API_KEY from settings when available) and a GoogleModel configured for Gemini usage, and returns an Agent configured to produce IdeaList outputs. The Agent is created with retries=0 because external retry/backoff is handled by the caller.
+    
+    Parameters:
+        system_prompt (str): The system-level prompt supplied to the agent.
+        extra_tools (Optional[List[object]]): Additional tool objects to include alongside the default search tools.
+    
+    Returns:
+        Agent: A fully configured Agent instance that emits IdeaList-formatted PromptedOutput.
+    
+    Raises:
+        Exception: Propagates any error encountered while constructing the provider, model, or Agent.
+    """
     settings = get_settings()
     tools = build_default_search_tools()
     if extra_tools:
@@ -56,6 +71,11 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
 
 def _strip_code_fences(text: str) -> str:
     # Extract inner content of a fenced block if present
+    """
+    Return the inner content of a fenced code block (```...```) if present; otherwise return the input trimmed of whitespace and stray backticks.
+    
+    Searches for a fenced code block, optionally labeled `json`, and returns its inner text with surrounding whitespace removed. If no fenced block is found, removes leading/trailing backticks and whitespace from the original string and returns the result.
+    """
     m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
     if m:
         return m.group(1).strip()
@@ -108,6 +128,20 @@ def _parse_ideas_output(raw_output: object) -> IdeaList:
 
 
 def _run_agent_with_retries(agent: Agent, user_prompt: str) -> IdeaList:
+    """
+    Run the given Agent synchronously with retry/backoff and return its parsed IdeaList output.
+    
+    Attempts up to settings.PYA_RETRIES (minimum 1) to run agent.run_sync(user_prompt). On success returns an IdeaList either directly from the agent's structured output or by parsing the agent's raw output with _parse_ideas_output. Between failed attempts sleeps for settings.PYA_RETRY_BACKOFF_S seconds when positive.
+    
+    Parameters:
+        user_prompt (str): The prompt passed to the agent for this run.
+    
+    Returns:
+        IdeaList: Parsed list of generated ideas produced by the agent.
+    
+    Raises:
+        Exception: Re-raises the last exception encountered if all attempts fail.
+    """
     settings = get_settings()
     last_err: Exception | None = None
     attempts = max(1, settings.PYA_RETRIES)
