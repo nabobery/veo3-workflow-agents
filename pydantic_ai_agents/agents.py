@@ -5,6 +5,8 @@ from typing import List, Optional
 import json
 import re
 import time
+import logging
+import random
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
@@ -15,6 +17,9 @@ from .tools import build_default_search_tools
 from .schemas import IdeaList
 # from .storage import save_ideas_output
 from .prompt_texts import load_prompt_text
+
+
+logger = logging.getLogger(__name__)
 
 
 def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None) -> Agent:
@@ -34,9 +39,8 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
         Exception: Propagates any error encountered while constructing the provider, model, or Agent.
     """
     settings = get_settings()
-    tools = build_default_search_tools()
-    if extra_tools:
-        tools.extend(extra_tools)
+    base_tools = build_default_search_tools()
+    tools = [*base_tools, *(extra_tools or [])]
 
     try:
         # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
@@ -65,7 +69,7 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
         )
         return agent
     except Exception as e:
-        print(f"Error building agent: {e}")
+        logger.exception("Error building agent: %s", e, exc_info=True)
         raise
 
 
@@ -155,10 +159,10 @@ def _run_agent_with_retries(agent: Agent, user_prompt: str) -> IdeaList:
             return _parse_ideas_output(result.output)
         except Exception as e:
             last_err = e
-            # Log the specific error for debugging
-            print(f"Attempt {i+1}/{attempts} failed: {e}")
+            logger.warning("Attempt %s/%s failed: %s", i + 1, attempts, e, exc_info=True)
             if i < attempts - 1 and settings.PYA_RETRY_BACKOFF_S > 0:
-                time.sleep(settings.PYA_RETRY_BACKOFF_S)
+                sleep_s = settings.PYA_RETRY_BACKOFF_S * random.uniform(0.8, 1.2)
+                time.sleep(sleep_s)
     assert last_err is not None
     raise last_err
 

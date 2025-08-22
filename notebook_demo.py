@@ -13,15 +13,19 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 import time
+import tempfile
 from pathlib import Path
 from typing import List, Dict, Any
+import logging
 
 # Add project root to path
+# Guard against duplicate insertions
 PROJECT_ROOT = Path(__file__).parent
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+logger = logging.getLogger(__name__)
 
 
 def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[Dict[str, Any]]:
@@ -64,7 +68,7 @@ def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[D
         print(f"✅ Generated {len(result.ideas)} initial ideas")
         
         # Import and use langraph enhancement
-        from langraph_agents import enhance_video_prompt
+        from langraph_agents.prompt_enhancer_graph import enhance_video_prompt
         
         enhanced_prompts = []
         for i, idea in enumerate(result.ideas, 1):
@@ -142,7 +146,8 @@ def generate_video(
     duration_seconds: int = 8,
     aspect_ratio: str = "16:9",
     resolution: str = "1080p",
-    save_video: bool = True
+    generate_audio: bool = True,
+    save_video: bool = True,
 ) -> Dict[str, Any]:
     """
     Generate a video from a natural-language prompt using the Veo3 API.
@@ -192,7 +197,8 @@ def generate_video(
         video_config = client_manager.get_video_generation_config(
             duration_seconds=duration_seconds,
             aspect_ratio=aspect_ratio,
-            resolution=resolution
+            resolution=resolution,
+            generate_audio=generate_audio,
         )
         
         print(f"🚀 Calling Veo3 API with model: {client_manager.config.VEO3_MODEL}")
@@ -214,7 +220,7 @@ def generate_video(
             elapsed = time.time() - start_time
             print(f"⏳ Generating... {elapsed:.0f}s elapsed")
             time.sleep(10)
-            operation = client.operations.get(operation)
+            operation = client.operations.get(operation.name)
             
             # Timeout after 5 minutes
             if elapsed > 300:
@@ -233,11 +239,12 @@ def generate_video(
                 client.files.download(file=video_data.video)
 
                 # Now that it's cached, we can save it to get the bytes.
-                tmp_filename = f"generated_video_{int(time.time())}.mp4"
-                video_data.video.save(tmp_filename)
-                with open(tmp_filename, "rb") as f:
-                    video_bytes = f.read()
-                os.remove(tmp_filename) # Clean up the temporary file
+                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
+                    video_data.video.save(tmpfile.name)
+                    tmpfile.flush()
+                    with open(tmpfile.name, "rb") as f:
+                        video_bytes = f.read()
+                Path(tmpfile.name).unlink(missing_ok=True)
 
                 print("✅ Video file cached successfully.")
 
@@ -371,7 +378,8 @@ def main():
     video_result = generate_video(
         prompt=best_prompt["enhanced"],
         duration_seconds=args.duration,
-        aspect_ratio=args.aspect_ratio
+        aspect_ratio=args.aspect_ratio,
+        generate_audio=(not args.no_audio),
     )
     
     if video_result["success"]:
