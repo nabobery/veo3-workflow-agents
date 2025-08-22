@@ -15,7 +15,6 @@ Usage:
 import argparse
 import sys
 import time
-import tempfile
 from pathlib import Path
 from typing import List, Dict, Any
 import logging
@@ -49,12 +48,12 @@ def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[D
     - If no initial ideas are generated or an unexpected error occurs during the overall process, the function returns an empty list.
     - Enhancement failures for individual ideas are handled per-item by falling back to the original description and a default quality_score of 0.5.
     """
-    print(f"🎭 Generating {num_ideas} enhanced prompts for: '{user_prompt}'")
+    logger.info("🎭 Generating %s enhanced prompts for: '%s'", num_ideas, user_prompt)
     
     try:
         # Import and use pydantic agents
         from pydantic_ai_agents import agents as pydantic_agents
-        print("📝 Generating initial prompt variations...")
+        logger.info("📝 Generating initial prompt variations...")
         
         result = pydantic_agents.generate_variations_for_topic(
             topic=user_prompt,
@@ -62,17 +61,17 @@ def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[D
         )
         
         if not result.ideas:
-            print("❌ No ideas generated")
+            logger.warning("❌ No ideas generated")
             return []
         
-        print(f"✅ Generated {len(result.ideas)} initial ideas")
+        logger.info("✅ Generated %s initial ideas", len(result.ideas))
         
         # Import and use langraph enhancement
         from langraph_agents.prompt_enhancer_graph import enhance_video_prompt
         
         enhanced_prompts = []
         for i, idea in enumerate(result.ideas, 1):
-            print(f"⚡ Enhancing idea {i}/{len(result.ideas)}: {idea.title}")
+            logger.info("⚡ Enhancing idea %s/%s: %s", i, len(result.ideas), idea.title)
             
             try:
                 enhancement_result = enhance_video_prompt(idea.description)
@@ -88,10 +87,10 @@ def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[D
                 }
                 
                 enhanced_prompts.append(enhanced_prompt)
-                print(f"   ✅ Enhanced (quality: {enhanced_prompt['quality_score']:.2f})")
+                logger.info("   ✅ Enhanced (quality: %.2f)", enhanced_prompt['quality_score'])
                 
             except Exception as e:
-                print(f"   ❌ Enhancement failed: {e}")
+                logger.warning("   ❌ Enhancement failed: %s", e, exc_info=True)
                 # Fallback to original
                 enhanced_prompts.append({
                     "title": idea.title,
@@ -106,7 +105,7 @@ def generate_and_enhance_prompts(user_prompt: str, num_ideas: int = 3) -> List[D
         return enhanced_prompts
         
     except Exception as e:
-        print(f"❌ Prompt generation failed: {e}")
+        logger.error("❌ Prompt generation failed: %s", e, exc_info=True)
         return []
 
 
@@ -128,15 +127,15 @@ def select_best_prompt(enhanced_prompts: List[Dict[str, Any]]) -> Dict[str, Any]
     sorted_prompts = sorted(enhanced_prompts, key=lambda x: x["quality_score"], reverse=True)
     best_prompt = sorted_prompts[0]
     
-    print("\n" + "="*60)
-    print("🏆 SELECTED BEST PROMPT")
-    print("="*60)
-    print(f"Title: {best_prompt['title']}")
-    print(f"Quality Score: {best_prompt['quality_score']:.2f}")
-    print(f"Enhanced Prompt: {best_prompt['enhanced'][:200]}...")
+    logger.info("\n" + "="*60)
+    logger.info("🏆 SELECTED BEST PROMPT")
+    logger.info("="*60)
+    logger.info("Title: %s", best_prompt['title'])
+    logger.info("Quality Score: %.2f", best_prompt['quality_score'])
+    logger.info("Enhanced Prompt: %s...", best_prompt['enhanced'][:200])
     if best_prompt["saved_dir"]:
-        print(f"Details saved to: {best_prompt['saved_dir']}")
-    print("="*60)
+        logger.info("Details saved to: %s", best_prompt['saved_dir'])
+    logger.info("="*60)
     
     return best_prompt
 
@@ -182,9 +181,9 @@ def generate_video(
                 "error": str                # human-readable error message
             }
     """
-    print("\n🎬 Starting video generation...")
-    print(f"Prompt: {prompt[:100]}...")
-    print(f"Settings: {duration_seconds}s, {aspect_ratio}, {resolution}")
+    logger.info("\n🎬 Starting video generation...")
+    logger.info("Prompt: %s...", prompt[:100])
+    logger.info("Settings: %ss, %s, %s", duration_seconds, aspect_ratio, resolution)
     
     try:
         # Import streamlined Veo3 configuration
@@ -202,7 +201,7 @@ def generate_video(
             generate_audio=generate_audio,
         )
         
-        print(f"🚀 Calling Veo3 API with model: {client_manager.config.VEO3_MODEL}")
+        logger.info("🚀 Calling Veo3 API with model: %s", client_manager.config.VEO3_MODEL)
         print("🔑 Using streamlined configuration (no Vertex AI required)")
         
         # Generate video
@@ -212,14 +211,14 @@ def generate_video(
             config=video_config,
         )
         
-        print(f"⏳ Video generation started. Operation ID: {operation.name}")
-        print("⏱️  This typically takes 30-90 seconds...")
+        logger.info("⏳ Video generation started. Operation ID: %s", operation.name)
+        logger.info("⏱️  This typically takes 30-90 seconds...")
         
         # Poll for completion
         start_time = time.time()
         while not operation.done:
             elapsed = time.time() - start_time
-            print(f"⏳ Generating... {elapsed:.0f}s elapsed")
+            logger.debug("⏳ Generating... %.0f s elapsed", elapsed)
             time.sleep(10)
             operation = client.operations.get(operation.name)
             
@@ -239,7 +238,7 @@ def generate_video(
         try:
             video_bytes = client.files.download(file=video_data.video)
         except Exception as e:
-            print(f"⚠️ Download failed: {e}. Trying inline bytes fallback.")
+            logger.warning("⚠️ Download failed: %s. Trying inline bytes fallback.", e, exc_info=True)
             video_bytes = getattr(getattr(video_data, "video", object()), "video_bytes", None)
 
         if not video_bytes:
@@ -258,7 +257,7 @@ def generate_video(
             },
         }
 
-        print(f"✅ Video generated successfully in {generation_time:.1f}s")
+        logger.info("✅ Video generated successfully in %.1f s", generation_time)
 
         if save_video:
             timestamp = int(time.time())
@@ -266,12 +265,12 @@ def generate_video(
             with open(filename, "wb") as f:
                 f.write(video_bytes)
             result["filename"] = filename
-            print(f"💾 Video saved as: {filename}")
+            logger.info("💾 Video saved as: %s", filename)
 
         return result
     
     except Exception as e:
-        print(f"❌ Video generation failed: {e}")
+        logger.error("❌ Video generation failed: %s", e, exc_info=True)
         return {
             "success": False,
             "error": str(e)
@@ -328,35 +327,35 @@ def main():
     
     args = parser.parse_args()
     
-    print("🎬 Veo3 Video Generation Demo")
-    print("=" * 50)
+    logger.info("🎬 Veo3 Video Generation Demo")
+    logger.info("=" * 50)
     
     # Step 1: Generate and enhance prompts
     enhanced_prompts = generate_and_enhance_prompts(args.prompt, args.num_ideas)
     
     if not enhanced_prompts:
-        print("❌ Failed to generate enhanced prompts")
+        logger.error("❌ Failed to generate enhanced prompts")
         return 1
     
     # Display all generated prompts
-    print("\n📝 All Enhanced Prompts:")
+    logger.info("\n📝 All Enhanced Prompts:")
     for prompt_data in enhanced_prompts:
-        print(f"\n{prompt_data['index']}. {prompt_data['title']}")
-        print(f"   Quality: {prompt_data['quality_score']:.2f}")
-        print(f"   Enhanced: {prompt_data['enhanced'][:150]}...")
+        logger.info("\n%s. %s", prompt_data['index'], prompt_data['title'])
+        logger.info("   Quality: %.2f", prompt_data['quality_score'])
+        logger.info("   Enhanced: %s...", prompt_data['enhanced'][:150])
     
     # Step 2: Select best prompt
     best_prompt = select_best_prompt(enhanced_prompts)
     
     if args.enhance_only:
-        print("\n✅ Prompt enhancement complete!")
-        print("💡 Run without --enhance-only to generate video")
+        logger.info("\n✅ Prompt enhancement complete!")
+        logger.info("💡 Run without --enhance-only to generate video")
         return 0
     
     # Step 3: Generate video
-    print("\n" + "="*60)
-    print("🎬 GENERATING VIDEO")
-    print("="*60)
+    logger.info("\n" + "="*60)
+    logger.info("🎬 GENERATING VIDEO")
+    logger.info("="*60)
     
     video_result = generate_video(
         prompt=best_prompt["enhanced"],
@@ -366,14 +365,14 @@ def main():
     )
     
     if video_result["success"]:
-        print("\n🎉 SUCCESS! Video generated successfully!")
-        print(f"⏱️  Total time: {video_result['generation_time']:.1f}s")
+        logger.info("\n🎉 SUCCESS! Video generated successfully!")
+        logger.info("⏱️  Total time: %.1f s", video_result['generation_time'])
         if "filename" in video_result:
-            print(f"📁 File: {video_result['filename']}")
-        print("\n💡 You can now play the video file or upload it to your platform!")
+            logger.info("📁 File: %s", video_result['filename'])
+        logger.info("\n💡 You can now play the video file or upload it to your platform!")
         return 0
     else:
-        print(f"\n❌ Video generation failed: {video_result['error']}")
+        logger.error("\n❌ Video generation failed: %s", video_result['error'])
         return 1
 
 
