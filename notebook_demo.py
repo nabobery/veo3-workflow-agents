@@ -159,6 +159,7 @@ def generate_video(
         duration_seconds (int): Target video duration in seconds.
         aspect_ratio (str): Aspect ratio string (e.g., "16:9", "9:16").
         resolution (str): Target resolution label (e.g., "1080p").
+        generate_audio (bool): Whether to request audio generation when supported by the model (default: True).
         save_video (bool): If True, the final video bytes are written to a timestamped .mp4 file and the filename is included in the returned dict.
     
     Returns:
@@ -181,7 +182,7 @@ def generate_video(
                 "error": str                # human-readable error message
             }
     """
-    print(f"\n🎬 Starting video generation...")
+    print("\n🎬 Starting video generation...")
     print(f"Prompt: {prompt[:100]}...")
     print(f"Settings: {duration_seconds}s, {aspect_ratio}, {resolution}")
     
@@ -202,7 +203,7 @@ def generate_video(
         )
         
         print(f"🚀 Calling Veo3 API with model: {client_manager.config.VEO3_MODEL}")
-        print(f"🔑 Using streamlined configuration (no Vertex AI required)")
+        print("🔑 Using streamlined configuration (no Vertex AI required)")
         
         # Generate video
         operation = client.models.generate_videos(
@@ -226,66 +227,48 @@ def generate_video(
             if elapsed > 300:
                 raise TimeoutError("Video generation timed out after 5 minutes")
         
-        if operation.response:
-            video_data = operation.result.generated_videos[0]
-            video_bytes = None
-            generation_time = time.time() - start_time
+        # ----- Success path: use operation.result -----
+        result_payload = getattr(operation, "result", None)
+        if not result_payload or not getattr(result_payload, "generated_videos", None):
+            raise RuntimeError("Video generation completed, but result payload is empty or malformed.")
 
-            # Per official Gemini examples, we must first download the file to make it available locally.
-            try:
-                print("⬇️ Caching video file locally...")
+        video_data = result_payload.generated_videos[0]
+        generation_time = time.time() - start_time
 
-                # This call populates the video object with data that can be saved.
-                client.files.download(file=video_data.video)
+        # Preferred: download returns raw bytes and populates video.video_bytes
+        try:
+            video_bytes = client.files.download(file=video_data.video)
+        except Exception as e:
+            print(f"⚠️ Download failed: {e}. Trying inline bytes fallback.")
+            video_bytes = getattr(getattr(video_data, "video", object()), "video_bytes", None)
 
-                # Now that it's cached, we can save it to get the bytes.
-                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
-                    video_data.video.save(tmpfile.name)
-                    tmpfile.flush()
-                    with open(tmpfile.name, "rb") as f:
-                        video_bytes = f.read()
-                Path(tmpfile.name).unlink(missing_ok=True)
+        if not video_bytes:
+            raise RuntimeError("Video generation completed, but failed to retrieve video bytes.")
 
-                print("✅ Video file cached successfully.")
+        result = {
+            "success": True,
+            "video_bytes": video_bytes,
+            "operation_id": operation.name,
+            "generation_time": generation_time,
+            "config": {
+                "duration_seconds": duration_seconds,
+                "aspect_ratio": aspect_ratio,
+                "resolution": resolution,
+                "generate_audio": generate_audio,
+            },
+        }
 
-            except Exception as e:
-                print(f"⚠️ Download/save method failed: {e}. Trying fallback.")
+        print(f"✅ Video generated successfully in {generation_time:.1f}s")
 
-                # Fallback to accessing inline bytes if the primary method fails
-                try:
-                    video_bytes = getattr(video_data.video, 'video_bytes', None)
-                except Exception:
-                    video_bytes = None
+        if save_video:
+            timestamp = int(time.time())
+            filename = f"generated_video_{timestamp}.mp4"
+            with open(filename, "wb") as f:
+                f.write(video_bytes)
+            result["filename"] = filename
+            print(f"💾 Video saved as: {filename}")
 
-            # Final check
-            if video_bytes is None:
-                raise RuntimeError("Video generation completed, but failed to retrieve video bytes using any available method.")
-
-            result = {
-                "success": True,
-                "video_bytes": video_bytes,
-                "operation_id": operation.name,
-                "generation_time": generation_time,
-                "config": {
-                    "duration_seconds": duration_seconds,
-                    "aspect_ratio": aspect_ratio,
-                    "resolution": resolution
-                }
-            }
-
-            print(f"✅ Video generated successfully in {generation_time:.1f}s")
-
-            if save_video:
-                timestamp = int(time.time())
-                filename = f"generated_video_{timestamp}.mp4"
-                with open(filename, "wb") as f:
-                    f.write(video_bytes)
-                result["filename"] = filename
-                print(f"💾 Video saved as: {filename}")
-
-            return result
-        else:
-            raise RuntimeError("Video generation failed - no response received")
+        return result
     
     except Exception as e:
         print(f"❌ Video generation failed: {e}")

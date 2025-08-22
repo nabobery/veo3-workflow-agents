@@ -48,10 +48,19 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
         api_key = google_secret.get_secret_value() if google_secret else None
         provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
 
+        try:
+            model_settings = GoogleModelSettings(
+                temperature=0.4,
+                google_thinking_config={"thinking_budget": 2048},
+            )
+        except TypeError:
+            # Older SDK versions do not support google_thinking_config
+            model_settings = GoogleModelSettings(temperature=0.4)
+
         model = GoogleModel(
             settings.PYA_MODEL,
             provider=provider,
-            settings=GoogleModelSettings(temperature=0.4, google_thinking_config={"thinking_budget": 2048}),
+            settings=model_settings,
         )
 
         # Set retries to improve resilience to transient errors
@@ -74,17 +83,14 @@ def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None)
 
 
 def _strip_code_fences(text: str) -> str:
-    # Extract inner content of a fenced block if present
+    """Return inner content of the last fenced code block in *text* (preferring JSON), or the cleaned original string.
+
+    Multiple fenced blocks can occur when the model prints explanations plus the JSON. We choose the *last* fenced block assuming it's the canonical payload.
     """
-    Return the inner content of a fenced code block (```...```) if present; otherwise return the input trimmed of whitespace and stray backticks.
-    
-    Searches for a fenced code block, optionally labeled `json`, and returns its inner text with surrounding whitespace removed. If no fenced block is found, removes leading/trailing backticks and whitespace from the original string and returns the result.
-    """
-    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
-    if m:
-        return m.group(1).strip()
-    # Remove stray backticks if the whole string is fenced without closing/newlines
-    return text.strip().strip('`').strip()
+    matches = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
+    if matches:
+        return matches[-1].strip()
+    return text.strip().strip("`").strip()
 
 
 def _extract_json_object(text: str) -> str:
