@@ -1,0 +1,404 @@
+/* Main stylesheet for Veo3 Workflow Agents TUI */
+
+/* Global styles */
+Screen {
+    background: $surface;
+    color: $text;
+}
+
+/* Header and Footer */
+Header {
+    background: $primary;
+    color: $text-primary;
+    height: 3;
+}
+
+Footer {
+    background: $primary;
+    color: $text-primary;
+    height: 3;
+}
+
+/* Typography */
+.screen-title {
+    text-style: bold;
+    text-align: center;
+    color: $accent;
+    margin: 1 0;
+    content-align: center middle;
+}
+
+.screen-subtitle {
+    text-align: center;
+    color: $text-muted;
+    margin: 0 0 2 0;
+    content-align: center middle;
+}
+
+.welcome-title {
+    text-style: bold;
+    text-align: center;
+    color: $accent;
+    margin: 1 0;
+    content-align: center middle;
+}
+
+.welcome-subtitle {
+    text-align: center;
+    color: $text-muted;
+    margin: 0 0 2 0;
+    content-align: center middle;
+}
+
+.section-title {
+    text-style: bold;
+    color: $secondary;
+    margin: 1 0;
+}
+
+.input-label {
+    color: $text;
+    margin: 1 0 0 0;
+}
+
+/* Cards and containers */
+.status-cards {
+    layout: horizontal;
+    height: 8;
+    margin: 1 0;
+}
+
+.status-cards > * {
+    margin: 0 1;
+    border: solid $accent;
+    padding: 1;
+    width: 1fr;
+}
+
+.card-title {
+    text-style: bold;
+    color: $accent;
+    text-align: center;
+}
+
+.card-status {
+    text-align: center;
+    color: $success;
+    margin: 1 0;
+}
+
+.card-details {
+    text-align: center;
+    color: $text-muted;
+    text-style: italic;
+}
+
+/* Quick actions */
+.quick-actions {
+    layout: horizontal;
+    height: 3;
+    margin: 1 0;
+}
+
+.quick-actions > Button {
+    margin: 0 1;
+    width: 1fr;
+}
+
+/* Statistics */
+.stats-row {
+    layout: horizontal;
+    height: 6;
+    margin: 1 0;
+}
+
+.stat-card {
+    border: solid $secondary;
+    padding: 1;
+    margin: 0 1;
+    width: 1fr;
+    text-align: center;
+}
+
+.stat-number {
+    text-style: bold;
+    color: $accent;
+    text-align: center;
+}
+
+.stat-label {
+    color: $text-muted;
+    text-align: center;
+    margin: 1 0 0 0;
+}
+
+/* Activity log */
+#activity-log {
+    border: solid $secondary;
+    height: 10;
+    margin: 1 0;
+}
+
+/* Form controls */
+Input {
+    margin: 0 0 1 0;
+    border: solid $secondary;
+}
+
+Input:focus {
+    border: solid $accent;
+}
+
+TextArea {
+    margin: 0 0 1 0;
+    border: solid $secondary;
+    min-height: 5;
+}
+
+TextArea:focus {
+    border: solid $accent;
+}
+
+Select {
+    margin: 0 0 1 0;
+}
+
+/* Buttons */
+Button {
+    margin: 0 1;
+}
+
+Button.-primary {
+    background: $accent;
+    color: $text-primary;
+}
+
+Button.-success {
+    background: $success;
+    color: $text-primary;
+}
+
+Button.-default {
+    background: $surface;
+    border: solid $secondary;
+    color: $text;
+}
+
+Button:hover {
+    text-style: bold;
+}
+
+/* Input status indicators */
+.input-status {
+    margin: 0 0 1 0;
+    height: 1;
+}
+
+.status-success {
+    color: $success;
+}
+
+.status-error {
+    color: $error;
+}
+
+.status-warning {
+    color: $warning;
+}
+
+/* Action buttons */
+.action-buttons {
+    layout: horizontal;
+    margin: 2 0;
+    height: 3;
+}
+
+.action-buttons > Button {
+    margin: 0 1;
+    width: 1fr;
+}
+
+/* Generation controls */
+.generation-controls {
+    border: solid $secondary;
+    padding: 1;
+    margin: 1 0;
+}
+
+.generation-options {
+    layout: horizontal;
+    margin: 1 0;
+}
+
+.generation-options > * {
+    margin: 0 1;
+}
+
+.generation-actions {
+    layout: horizontal;
+    margin: 1 0;
+    height: 3;
+}
+
+/* Video controls */
+.video-controls {
+    border: solid $secondary;
+    padding: 1;
+    margin: 1 0;
+}
+
+.video-options {
+    layout: horizontal;
+    margin: 1 0;
+}
+
+.video-options > Vertical {
+    margin: 0 1;
+    width: 1fr;
+}
+
+/* Enhancement controls */
+.enhancement-input {
+    border: solid $secondary;
+    padding: 1;
+    margin: 1 0;
+}
+
+.enhancement-controls {
+    layout: horizontal;
+    margin: 1 0;
+    height: 3;
+}
+
+/* Progress section */
+.progress-section {
+    border: solid $secondary;
+    padding: 1;
+    margin: 1 0;
+}
+
+#generation-progress {
+    margin: 1 0;
+}
+
+#progress-status {
+    text-align: center;
+    color: $text-muted;
+}
+
+/* Tables */
+DataTable {
+    border: solid $secondary;
+    margin: 1 0;
+    min-height: 10;
+}
+
+/* Tabs */
+TabbedContent {
+    border: solid $secondary;
+}
+
+TabPane {
+    padding: 1;
+}
+
+/* Scrollable containers */
+ScrollableContainer {
+    padding: 1;
+}
+
+/* Modal dialogs */
+#help-modal {
+    background: $surface;
+    border: thick $accent;
+    padding: 2;
+    margin: 5;
+    width: 80%;
+    height: 80%;
+}
+
+#error-modal {
+    background: $surface;
+    border: thick $error;
+    padding: 2;
+    margin: 10;
+    width: 60%;
+    height: 40%;
+}
+
+/* Responsive design for smaller terminals */
+@media (max-width: 80) {
+    .status-cards {
+        layout: vertical;
+        height: auto;
+    }
+    
+    .quick-actions {
+        layout: vertical;
+        height: auto;
+    }
+    
+    .stats-row {
+        layout: vertical;
+        height: auto;
+    }
+    
+    .generation-options {
+        layout: vertical;
+    }
+    
+    .video-options {
+        layout: vertical;
+    }
+    
+    .action-buttons {
+        layout: vertical;
+        height: auto;
+    }
+}
+
+/* Dark theme adjustments */
+Screen {
+    --primary: #2563eb;
+    --secondary: #64748b;
+    --accent: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --surface: #0f172a;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --text-primary: #ffffff;
+}
+
+/* Switch component styling */
+Switch {
+    margin: 0 1;
+}
+
+Switch > .switch--slider {
+    background: $secondary;
+}
+
+Switch.-on > .switch--slider {
+    background: $accent;
+}
+
+/* Label styling */
+Label {
+    color: $text;
+    margin: 1 0 0 0;
+}
+
+/* Horizontal container spacing */
+Horizontal > * {
+    margin: 0 0.5;
+}
+
+Horizontal > *:first-child {
+    margin-left: 0;
+}
+
+Horizontal > *:last-child {
+    margin-right: 0;
+}

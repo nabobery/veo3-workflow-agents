@@ -20,12 +20,15 @@ dependencies = [
     "nest-asyncio>=1.6.0",
     "textual>=5.3.0",
     "textual-dev>=1.7.0",
+    "cryptography>=41.0.0",
+    "keyring>=24.0.0",
 ]
 
 [project.scripts]
 langraph-agents = "langraph_agents.cli:main"
 pydantic-ai-agents = "pydantic_ai_agents.cli:main"
 workflow-agents = "workflow_main:main"
+veo3-tui = "tui.main:main"
 
 [tool.setuptools]
 include-package-data = true
