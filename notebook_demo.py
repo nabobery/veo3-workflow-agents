@@ -184,6 +184,7 @@ def generate_video(
     logger.info("\n🎬 Starting video generation...")
     logger.info("Prompt: %s...", prompt[:100])
     logger.info("Settings: %ss, %s, %s", duration_seconds, aspect_ratio, resolution)
+    logger.debug("Note: Depending on model support, duration/resolution may be ignored by the API.")
     
     try:
         # Import streamlined Veo3 configuration
@@ -202,7 +203,7 @@ def generate_video(
         )
         
         logger.info("🚀 Calling Veo3 API with model: %s", client_manager.config.VEO3_MODEL)
-        print("🔑 Using streamlined configuration (no Vertex AI required)")
+        logger.info("🔑 Using streamlined configuration (no Vertex AI required)")
         
         # Generate video
         operation = client.models.generate_videos(
@@ -219,12 +220,10 @@ def generate_video(
         while not operation.done:
             elapsed = time.time() - start_time
             logger.debug("⏳ Generating... %.0f s elapsed", elapsed)
-            time.sleep(10)
-            operation = client.operations.get(operation.name)
-            
-            # Timeout after 5 minutes
             if elapsed > 300:
                 raise TimeoutError("Video generation timed out after 5 minutes")
+            time.sleep(10)
+            operation = client.operations.get(operation)
         
         # ----- Success path: use operation.result -----
         result_payload = getattr(operation, "result", None)
@@ -309,9 +308,9 @@ def main():
         help="Video aspect ratio (default: 16:9)"
     )
     parser.add_argument(
-        "--no-audio", 
+        "--no-audio",
         action="store_true",
-        help="Disable audio generation"
+        help="Disable audio generation (requires SDK/model support)"
     )
     parser.add_argument(
         "--num-ideas", 
@@ -327,6 +326,8 @@ def main():
     
     args = parser.parse_args()
     
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
     logger.info("🎬 Veo3 Video Generation Demo")
     logger.info("=" * 50)
     
@@ -346,6 +347,9 @@ def main():
     
     # Step 2: Select best prompt
     best_prompt = select_best_prompt(enhanced_prompts)
+    if not best_prompt:
+        logger.error("❌ No selectable prompt returned")
+        return 1
     
     if args.enhance_only:
         logger.info("\n✅ Prompt enhancement complete!")
