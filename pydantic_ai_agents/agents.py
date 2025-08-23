@@ -5,6 +5,8 @@ from typing import List, Optional
 import json
 import re
 import time
+import logging
+import random
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
@@ -17,46 +19,78 @@ from .schemas import IdeaList
 from .prompt_texts import load_prompt_text
 
 
+logger = logging.getLogger(__name__)
+
+
 def _build_agent(system_prompt: str, extra_tools: Optional[List[object]] = None) -> Agent:
+    """
+    Create and configure an Agent backed by a GoogleModel and a set of tools.
+    
+    Builds default search/tools, optionally extends them with extra_tools, constructs a GoogleProvider (using GOOGLE_API_KEY from settings when available) and a GoogleModel configured for Gemini usage, and returns an Agent configured to produce IdeaList outputs. The Agent is created with retries=0 because external retry/backoff is handled by the caller.
+    
+    Parameters:
+        system_prompt (str): The system-level prompt supplied to the agent.
+        extra_tools (Optional[List[object]]): Additional tool objects to include alongside the default search tools.
+    
+    Returns:
+        Agent: A fully configured Agent instance that emits IdeaList-formatted PromptedOutput.
+    
+    Raises:
+        Exception: Propagates any error encountered while constructing the provider, model, or Agent.
+    """
     settings = get_settings()
-    tools = build_default_search_tools()
-    if extra_tools:
-        tools.extend(extra_tools)
+    base_tools = build_default_search_tools()
+    tools = [*base_tools, *(extra_tools or [])]
 
-    # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
-    google_secret = getattr(settings, "GOOGLE_API_KEY", None)
-    api_key = google_secret.get_secret_value() if google_secret else None
-    provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
+    try:
+        # Build a GoogleProvider (GLA only) and a GoogleModel for Gemini-only usage
+        google_secret = getattr(settings, "GOOGLE_API_KEY", None)
+        api_key = google_secret.get_secret_value() if google_secret else None
+        provider = GoogleProvider(api_key=api_key) if api_key else GoogleProvider()
 
-    model = GoogleModel(
-        settings.PYA_MODEL,
-        provider=provider,
-        settings=GoogleModelSettings(temperature=0.4, google_thinking_config={"thinking_budget": 2048}),
-    )
+        try:
+            model_settings = GoogleModelSettings(
+                temperature=0.4,
+                google_thinking_config={"thinking_budget": 2048},
+            )
+        except TypeError:
+            # Older SDK versions do not support google_thinking_config
+            model_settings = GoogleModelSettings(temperature=0.4)
 
-    # Set retries to improve resilience to transient errors
-    agent = Agent(
-        model=model,
-        tools=tools,
-        system_prompt=system_prompt,
-        output_type=PromptedOutput(
-            IdeaList,
-            name="IdeaList",
-            description="Return { ideas: [ {title, description, sources, trend_score?} ] }."
-        ),
-        retries=0,  # rely on external _run_agent_with_retries for backoff
-        output_retries=None,
-    )
-    return agent
+        model = GoogleModel(
+            settings.PYA_MODEL,
+            provider=provider,
+            settings=model_settings,
+        )
+
+        # Set retries to improve resilience to transient errors
+        agent = Agent(
+            model=model,
+            tools=tools,
+            system_prompt=system_prompt,
+            output_type=PromptedOutput(
+                IdeaList,
+                name="IdeaList",
+                description="Return { ideas: [ {title, description, sources, trend_score?} ] }."
+            ),
+            retries=0,  # rely on external _run_agent_with_retries for backoff
+            output_retries=None,
+        )
+        return agent
+    except Exception as e:
+        logger.exception("Error building agent: %s", e, exc_info=True)
+        raise
 
 
 def _strip_code_fences(text: str) -> str:
-    # Extract inner content of a fenced block if present
-    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
-    if m:
-        return m.group(1).strip()
-    # Remove stray backticks if the whole string is fenced without closing/newlines
-    return text.strip().strip('`').strip()
+    """Return inner content of the last fenced code block in *text* (preferring JSON), or the cleaned original string.
+
+    Multiple fenced blocks can occur when the model prints explanations plus the JSON. We choose the *last* fenced block assuming it's the canonical payload.
+    """
+    matches = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
+    if matches:
+        return matches[-1].strip()
+    return text.strip().strip("`").strip()
 
 
 def _extract_json_object(text: str) -> str:
@@ -104,11 +138,26 @@ def _parse_ideas_output(raw_output: object) -> IdeaList:
 
 
 def _run_agent_with_retries(agent: Agent, user_prompt: str) -> IdeaList:
+    """
+    Run the given Agent synchronously with retry/backoff and return its parsed IdeaList output.
+    
+    Attempts up to settings.PYA_RETRIES (minimum 1) to run agent.run_sync(user_prompt). On success returns an IdeaList either directly from the agent's structured output or by parsing the agent's raw output with _parse_ideas_output. Between failed attempts sleeps for settings.PYA_RETRY_BACKOFF_S seconds when positive.
+    
+    Parameters:
+        user_prompt (str): The prompt passed to the agent for this run.
+    
+    Returns:
+        IdeaList: Parsed list of generated ideas produced by the agent.
+    
+    Raises:
+        Exception: Re-raises the last exception encountered if all attempts fail.
+    """
     settings = get_settings()
     last_err: Exception | None = None
     attempts = max(1, settings.PYA_RETRIES)
     for i in range(attempts):
         try:
+            # Use run_sync for synchronous execution
             result = agent.run_sync(user_prompt)
             # If structured output is enabled, this is already an IdeaList
             if isinstance(result.output, IdeaList):
@@ -116,8 +165,10 @@ def _run_agent_with_retries(agent: Agent, user_prompt: str) -> IdeaList:
             return _parse_ideas_output(result.output)
         except Exception as e:
             last_err = e
+            logger.warning("Attempt %s/%s failed: %s", i + 1, attempts, e, exc_info=True)
             if i < attempts - 1 and settings.PYA_RETRY_BACKOFF_S > 0:
-                time.sleep(settings.PYA_RETRY_BACKOFF_S)
+                sleep_s = settings.PYA_RETRY_BACKOFF_S * random.uniform(0.8, 1.2)
+                time.sleep(sleep_s)
     assert last_err is not None
     raise last_err
 

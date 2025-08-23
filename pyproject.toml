@@ -12,6 +12,12 @@ dependencies = [
     "defusedxml>=0.7.1",
     "pydantic-ai>=0.6.2",
     "tavily-python>=0.7.10",
+    "google-genai>=1.8.0",
+    "ipywidgets>=8.0.0",
+    "requests>=2.31.0",
+    "ipython>=9.4.0",
+    "ipykernel>=6.30.1",
+    "nest-asyncio>=1.6.0",
 ]
 
 [project.scripts]

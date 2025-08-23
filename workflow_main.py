@@ -42,13 +42,35 @@ def _generate_ideas(mode: str, topic: Optional[str], n: Optional[int]) -> IdeaLi
 
 def _run_pipeline(mode: str, topic: Optional[str], n: Optional[int], max_enhance: Optional[int]) -> int:
     # Touch settings early to surface configuration issues
+    """
+    Run the full generation-and-enhancement pipeline: validate configs, generate ideas, save raw JSON, and enhance selected ideas.
+    
+    Parameters:
+        mode (str): Idea generation mode; one of "simple", "viral", or "variations".
+        topic (Optional[str]): Topic or context required by some modes; passed through to generators.
+        n (Optional[int]): Number of ideas to request from the generator (if supported).
+        max_enhance (Optional[int]): Maximum number of generated ideas to enhance; if None or <= 0 all generated ideas are processed.
+    
+    Returns:
+        int: Process exit code:
+            0  - Completed successfully (may still have non-fatal per-idea errors).
+            1  - Configuration, generation, or validation failure (no ideas generated, config invalid, etc.).
+            130 - Cancelled by user (KeyboardInterrupt).
+    
+    Side effects:
+        - Validates application settings (may print configuration errors to stderr).
+        - Persists generated ideas to a JSON file (via save_ideas_to_directory) and prints the saved path.
+        - Calls the enhancement workflow for each selected idea; enhanced outputs are saved under prompt_outputs/ and their directories are printed.
+        - Emits progress and error messages to stdout/stderr.
+    """
     get_pyai_settings()
     try:
-        # LangGraph requires GOOGLE_API_KEY; surface error early
+        # LangGraph requires API key; surface error early
         get_lang_settings()
     except ValidationError as e:
         if "GOOGLE_API_KEY" in str(e):
             print("Error: GOOGLE_API_KEY environment variable not set for langraph_agents", file=sys.stderr)
+            print("Please set GOOGLE_API_KEY with your Google AI Studio API key", file=sys.stderr)
         else:
             print(f"Error: Configuration validation failed: {e}", file=sys.stderr)
         return 1

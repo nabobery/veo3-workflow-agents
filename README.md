@@ -1,9 +1,49 @@
 # VEO3 Workflow Agents
 
-Workflow agents for AI video prompt enhancement. The first implemented agent is a LangGraph-based Video Prompt Enhancer that transforms a basic prompt into JSON, XML, and natural language outputs using Google Gemini. A combined orchestrator now generates ideas with `pydantic_ai_agents` and enhances them with `langraph_agents` in one command.
+Workflow agents for AI video prompt enhancement and video generation using Google's Veo3 Fast API. This project combines multiple AI agents to create a comprehensive video generation pipeline:
 
-- Enhancement agent: `langraph_agents/` (see `langraph_agents/README.md`)
-- Idea generation agents: `pydantic_ai_agents/`
+- **Enhancement agent**: `langraph_agents/` - Technical prompt enhancement with cinematography details
+- **Idea generation agents**: `pydantic_ai_agents/` - Creative prompt variations and viral content ideas
+- **Veo3 Integration**: Complete notebook workflow for generating videos using Google's latest video AI
+- **Interactive Interface**: Jupyter notebook with user-friendly UI for the complete workflow
+
+## 🎬 NEW: Streamlined Veo3 Video Generation Notebook
+
+We've created a streamlined Jupyter notebook that integrates prompt generation, enhancement, and video creation with **zero Google Cloud setup required**:
+
+**`veo3_prompt_generation_workflow.ipynb`** - Streamlined interactive video generation pipeline
+
+### Features:
+
+- 🎭 Generate creative prompt variations using `pydantic_ai_agents`
+- ⚡ Enhance prompts with technical details using `langraph_agents`
+- 🎬 Generate high-quality videos using Veo3 Fast API
+- 🎛️ Interactive UI with customizable settings (duration, aspect ratio, audio)
+- 💾 Automatic video saving and playback
+- 🔧 Advanced usage examples and batch processing
+- ✅ **No Vertex AI or Google Cloud Project required!**
+
+### Quick Start with Notebook:
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Set up environment variable (only requirement!)
+export GOOGLE_API_KEY="your-google-api-key"
+
+# Launch Jupyter Lab
+jupyter lab veo3_prompt_generation_workflow.ipynb
+```
+
+### Or try the standalone demo:
+
+```bash
+# Run the command-line demo
+python notebook_demo.py "A cat playing with a ball of yarn in a sunlit room"
+```
+
+See **[NOTEBOOK_SETUP.md](NOTEBOOK_SETUP.md)** for detailed setup instructions.
 
 ## Requirements
 
@@ -21,6 +61,8 @@ uv pip install -e .
 
 ## Configure environment
 
+**Streamlined Setup - Only Google API Key Required!**
+
 Get an API key from Google AI Studio and set it:
 
 ```bash
@@ -31,10 +73,24 @@ export GOOGLE_API_KEY="your-google-api-key"
 $env:GOOGLE_API_KEY = "your-google-api-key"
 ```
 
-Optional overrides via env:
+**API Key Source:**
 
-- `GOOGLE_MODEL` (default: `gemini-2.5-flash`)
-- `DEFAULT_TEMPERATURE` (default: `0.7`)
+- Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+**Key Benefits:**
+
+- ✅ **No Google Cloud Project required**
+- ✅ **No Vertex AI setup needed**
+- ✅ **Single API key for everything**
+- ✅ **Simplified authentication**
+
+**Environment Variables:**
+
+- `GOOGLE_API_KEY`: Google API key (required)
+- `VEO3_MODEL`: Veo3 model variant (optional, default: `veo-3.0-fast-generate-preview`)
+- `GEMINI_MODEL`: Gemini model (optional, default: `gemini-2.5-flash`)
+- `TAVILY_API_KEY`: Search enhancement (optional)
+- `DEFAULT_TEMPERATURE`: AI temperature (optional, default: `0.7`)
 
 ## Quick start
 
@@ -86,8 +142,30 @@ print("Saved to:", result.get("saved_dir"))
 
 ## Validate setup
 
+### Quick validation (recommended)
+
+```bash
+# Test complete Veo3 integration
+python test_veo3_integration.py
+```
+
+### Legacy validation
+
 ```bash
 python langraph_agents/test_setup.py
+```
+
+### Demo the streamlined workflow
+
+```bash
+# Generate enhanced prompts and create a video (no GCP setup required!)
+python notebook_demo.py "A cat playing with a ball of yarn in a sunlit room"
+
+# Just test prompt enhancement (no video generation)
+python notebook_demo.py "Sunset over mountains" --enhance-only
+
+# Custom video settings
+python notebook_demo.py "Robot dancing" --duration 6 --aspect-ratio "9:16" --no-audio
 ```
 
 ## Project structure
